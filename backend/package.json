@@ -5,7 +5,7 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node src/index.js",
+    "dev": "nodemon src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -19,5 +19,15 @@
   "bugs": {
     "url": "https://github.com/MeghPatel-007/LaunchStack/issues"
   },
-  "homepage": "https://github.com/MeghPatel-007/LaunchStack#readme"
+  "homepage": "https://github.com/MeghPatel-007/LaunchStack#readme",
+  "comment_1": "!!! dependencies for normal requirement",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1"
+  },
+  "comment_2": "!!! dependencies for developers requirement",
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
 }
