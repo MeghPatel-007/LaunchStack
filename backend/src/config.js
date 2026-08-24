@@ -1,13 +1,17 @@
 import dotenv from 'dotenv'
-import path from 'path';
+import path from 'path'
+import { fileURLToPath } from 'url'
 
-dotenv.config({ path: path.resolve('./../.env') }) // path for config and other js files
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+dotenv.config({ path: path.resolve(__dirname, '../../.env') }) // dynamic relative path
+
+// dotenv.config({ path: path.resolve('./../.env') }) // static relative path
 
 // * ValidatePortNumber is in range , float number , NaN
 export function validatePortNumber() {
   // * Path configuration
   const port = process.env.PORT
-
   // * checking
   if (typeof port !== 'string' || port.trim() === '') {
     throw new Error('PORT env var is missing or empty')

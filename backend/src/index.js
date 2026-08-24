@@ -4,7 +4,7 @@ import { validatePortNumber } from './config.js'
 import { ensureLogsDir } from './Utils/ensureLogsDir.js'
 
 const port = validatePortNumber() // validates the port number
-ensureLogsDir(); // ensures logs dir exists or not
+await ensureLogsDir() // ensures logs dir exists or not
 // * Express setup
 const app = express()
 

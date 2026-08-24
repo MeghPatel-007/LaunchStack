@@ -1,16 +1,21 @@
 import { promises as fs } from 'node:fs'
-import path from 'node:path'
+import path, { dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+const __path = path.resolve(__dirname, '../../logs') // made CWD independent
 
 export async function ensureLogsDir() {
   try {
-    await fs.access(path.resolve('./logs'))
+    await fs.access(__path)
     console.log('Logs dir exists')
   } catch (e) {
     if (e.code === 'ENOENT') {
       console.log('Logs dir does not exists')
       console.log('Making one ...')
       try {
-        await fs.mkdir(path.resolve('./logs'))
+        await fs.mkdir(__path)
         console.log('Logs dir is made')
       } catch (e) {
         console.error(`${e.code} : ${e.message}`)
