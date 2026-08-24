@@ -7,9 +7,9 @@ EW01 — Node.js Foundation & LaunchStack Setup
 ## Overall Status
 
 - Current phase: EW01
-- Completion percentage: 58% (verified implementation only)
-- Last checked: 2026-08-21
-- Current blocker: Startup does not await required logs-directory setup; testing and documentation are absent.
+- Completion percentage: ~80% (verified implementation only; final percentage to be reconciled with the full EW01 checklist)
+- Last checked: 2026-08-24
+- Current blocker: No blocking implementation issue in the completed startup/path work. Automated tests, README/setup documentation, and remaining EW01 requirements are still outstanding.
 
 ## Roadmap Progress
 
@@ -20,11 +20,11 @@ EW01 — Node.js Foundation & LaunchStack Setup
 | Node.js Runtime | Verified | ESM backend modules execute successfully. |
 | npm | Verified | Backend manifest, lockfile, installed dependencies, and scripts exist. |
 | package.json | Verified | `backend/package.json` defines ESM, scripts, and dependencies. |
-| Environment Variables | Verified | Root `.env` is ignored, loaded by dotenv, and `PORT` is consumed. |
-| File System (fs) | Partial | Promise-based `fs.access`/`fs.mkdir` and `ENOENT` handling exist; startup does not await them. |
-| Path Module | Partial | Node `path` constructs config/log paths, but paths depend on the working directory. |
-| Project Structure | Partial | Committed `backend/` separation is appropriate; `frontend/` and README are empty. |
-| Git Workflow | Verified | Clean `main` branch tracks `origin/main`; secrets and runtime files are ignored. |
+| Environment Variables | Verified | Root `.env` is loaded through a CWD-independent module-relative path and `PORT` is consumed. |
+| File System (fs) | Verified | Promise-based `fs.access`/`fs.mkdir`, `ENOENT` handling, startup awaiting, and missing/existing directory behavior verified. |
+| Path Module | Verified | Logs and `.env` paths are now independent of the process working directory. |
+| Project Structure | Partial | Committed `backend/` separation is appropriate; `frontend/` and README remain empty. |
+| Git Workflow | Verified | Changes were reviewed, staged selectively, and implementation changes committed. |
 
 ### EW02 — Express.js & REST API
 
@@ -42,29 +42,136 @@ EW01 — Node.js Foundation & LaunchStack Setup
 - [x] Node project initialized as an ESM backend
 - [x] Backend package manifest and lockfile configured
 - [x] dotenv loads the root `.env` file
-- [x] `PORT` validation rejects empty, decimal, non-numeric, and out-of-range values
+- [x] `PORT` validation rejects empty, decimal, non-numeric, and out-of-range `PORT` values
 - [x] Express root route implemented
 - [x] Logs-directory utility uses Promise-based filesystem APIs
-- [ ] Await logs-directory setup before server startup
-- [ ] Verify logs-directory behavior when missing and already present
-- [ ] Remove working-directory dependence from configuration and logs paths
+- [x] Await logs-directory setup before server startup
+- [x] Verify logs-directory behavior when missing and already present
+- [x] Verify startup fails when required logs initialization fails
+- [x] Remove working-directory dependence from configuration and logs paths
 - [ ] Automated tests and a working `npm test` command
+- [ ] README/setup documentation
+- [ ] Final EW01 requirement audit
 
-## Git Status
+## Startup Initialization
 
-- Current branch: `main` (tracking `origin/main`)
-- Working tree: Clean before this tracker update
-- Latest commit: `aa5aaed` — `feat: add backend configuration and logs setup` (2026-08-21)
-- Current-phase commits: 3
-- Untracked files: None before this tracker update
-- Protected runtime/secrets: `.env`, `node_modules/`, and `logs/` are ignored; none are tracked
+Startup now follows this order:
+
+```text
+validatePortNumber()
+        ↓
+await ensureLogsDir()
+        ↓
+Express setup
+        ↓
+app.listen()
+```
+
+This ensures the server cannot begin listening before required logs-directory initialization succeeds.
+
+If `ensureLogsDir()` rejects, startup stops and `app.listen()` is never reached.
+
+## Filesystem Verification
+
+### Missing logs directory
+
+Verified behavior:
+
+```text
+Logs dir does not exists
+Making one ...
+Logs dir is made
+Server is running...
+```
+
+Result: `backend/logs/` is created before the server starts.
+
+### Existing logs directory
+
+Verified behavior:
+
+```text
+Logs dir exists
+Server is running...
+```
+
+Result: Existing directory is handled successfully without unnecessary failure.
+
+### Initialization failure
+
+Verified by deliberate failure testing:
+
+```text
+ENOENT ...
+Node.js ...
+[nodemon] app crashed
+```
+
+No server startup message appeared after the initialization failure.
+
+Result: Required initialization failure correctly prevents server startup.
+
+## Path Handling
+
+The previous paths were dependent on `process.cwd()`:
+
+```text
+path.resolve('./logs')
+path.resolve('./../.env')
+```
+
+These have been replaced with module-relative resolution based on:
+
+```text
+import.meta.url
+        ↓
+fileURLToPath()
+        ↓
+dirname()
+        ↓
+project-relative path
+```
+
+### Logs path
+
+`ensureLogsDir()` now resolves the intended `backend/logs` location from the module location and reuses the same resolved path for both checking and creation.
+
+### Environment path
+
+`config.js` now resolves the root `.env` file relative to the module location rather than the process working directory.
+
+### CWD verification
+
+The application was tested from:
+
+1. `LaunchStack/backend`
+2. `LaunchStack`
+
+The `process.cwd()` value changed between these runs, while `import.meta.url` remained tied to the actual module location.
+
+The logs directory continued to resolve to `backend/logs`, and the application started successfully.
 
 ## Testing Status
 
-- Tests present? No
-- Tests passing? No — `npm test` remains the default failing placeholder.
-- Manual verification: Valid `PORT` accepted; empty, decimal, non-numeric, zero, and out-of-range `PORT` values rejected.
-- Known gaps: No automated checks; no audit-time filesystem creation test because the audit did not modify files.
+Tests present? **No**
+
+Automated tests passing? **No — `npm test` remains the default failing placeholder.**
+
+Manual verification:
+
+- Valid `PORT` accepted.
+- Empty `PORT` rejected.
+- Decimal `PORT` rejected.
+- Non-numeric `PORT` rejected.
+- Zero rejected.
+- Out-of-range `PORT` rejected.
+- Missing logs directory created successfully.
+- Existing logs directory handled successfully.
+- Required initialization failure prevents server startup.
+- Startup works from the backend directory.
+- Startup works from the project root.
+- `.env` loading works independently of the current working directory.
+- Logs path remains independent of the current working directory.
 
 ## Documentation Status
 
@@ -72,34 +179,61 @@ EW01 — Node.js Foundation & LaunchStack Setup
 - API documentation: None
 - Setup instructions: None
 - Architecture documentation: None
-- Progress tracker: Updated to current verified state.
+- Progress tracker: This document will be updated at the end of the day.
 
 ## Code Quality
 
-- Startup ordering: `ensureLogsDir()` is called without `await`; logs setup can fail after the server has started.
-- Path handling: `path.resolve('./logs')` and `path.resolve('./../.env')` are tied to the process working directory.
-- Filesystem errors: The utility correctly rethrows non-`ENOENT` and mkdir errors, but its failure cannot currently gate startup.
-- Unused dependency: `cors` is installed but not used.
-- Git hygiene: The backend migration is committed and working tree was clean before this update.
+- Startup ordering: **Verified** — required logs initialization is awaited before `app.listen()`.
+- Path handling: **Verified** — logs and `.env` paths no longer depend on the process working directory.
+- Filesystem errors: **Verified** — `ENOENT` is handled for directory creation; unexpected filesystem and mkdir errors are rethrown and prevent startup.
+- Initialization failure handling: **Verified** — server does not start when required initialization fails.
+- Unused dependency: `cors` is installed but not used; defer until middleware work begins.
+- Abstraction level: Kept intentionally minimal; no unnecessary path utility or bootstrap abstraction introduced.
+- Git hygiene: Implementation changes were reviewed and committed separately from the end-of-day progress update.
+
+## Concepts Learned
+
+- Top-level `await` in ESM
+- Asynchronous application startup
+- Promise rejection and startup failure
+- `process.cwd()`
+- `import.meta.url`
+- `fileURLToPath()`
+- `path.dirname()`
+- CWD-independent filesystem paths
+- Reusing one resolved path for multiple filesystem operations
+- Git diff review and `git diff --check`
+- CRLF vs LF line endings and their effect on Git diffs
 
 ## Current Assessment
 
-### What is actually done
+### Actually Done
 
-Committed backend restructuring; Node/ESM/npm setup; dotenv configuration loading; validated `PORT`; an Express root route; and a filesystem utility for a logs directory.
+Node/ESM/npm setup, backend restructuring, dotenv configuration, `PORT` validation, Express starter route, Promise-based filesystem handling, awaited startup initialization, filesystem verification, initialization-failure verification, and CWD-independent logs/configuration paths.
 
-### What is partially done
+### Partially Done
 
-Filesystem and path handling are implemented but not robustly integrated. Express has only a starter route. Frontend separation exists without frontend work.
+Project structure remains partially complete because the frontend and README are still empty. Express is only at the starter-route stage.
 
-### What is missing
+### Missing
 
-Awaited startup initialization, filesystem behavior verification, CWD-independent paths, tests, README/setup documentation, and all substantive API design.
+- Automated tests
+- Working `npm test`
+- README/setup documentation
+- Final EW01 audit against all original requirements
+- Any remaining EW01 items identified during that audit
 
-### Problems
+### Problems / Technical Debt
 
-The server can start before required logs setup finishes. The test script intentionally fails, and the README is empty.
+- `cors` is installed but unused; leave it alone until middleware work begins.
+- No automated test suite exists yet.
+- README is empty.
+- EW01 completion percentage should be recalculated against the actual full checklist rather than the old 58% figure.
 
-### Recommended Next Step
+## Recommended Next Step
 
-Make backend startup asynchronous and await `ensureLogsDir()` before calling `app.listen()`, then verify both missing and existing logs-directory cases.
+Do **not** jump into PostgreSQL, controllers, or broad Express tutorials.
+
+First perform a **final EW01 audit** against the original tracker and identify the remaining EW01 requirements. Then tackle the smallest remaining requirement using:
+
+**LEARN → IMPLEMENT → TEST → DEBUG → COMMIT → DOCUMENT**
