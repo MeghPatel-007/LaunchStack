@@ -1,5 +1,5 @@
 import { validatePortNumber } from './config.js'
-import { ensureLogsDir } from './Utils/ensureLogsDir.js'
+import { ensureLogsDir } from './utils/ensureLogsDir.js'
 // * app connection
 import { app } from './app.js'
 

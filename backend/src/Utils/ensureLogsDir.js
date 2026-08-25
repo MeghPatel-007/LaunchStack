@@ -12,7 +12,7 @@ export async function ensureLogsDir() {
     console.log('Logs dir exists')
   } catch (e) {
     if (e.code === 'ENOENT') {
-      console.log('Logs dir does not exists')
+      console.log('Logs dir does not exist')
       console.log('Making one ...')
       try {
         await fs.mkdir(__path)
@@ -26,5 +26,19 @@ export async function ensureLogsDir() {
       throw e
     }
   }
-  return
+}
+
+export async function writingLogs(logs) {
+  try {
+    const today = new Date().toISOString().split('T')[0]
+    const logFileName = `app-info-${today}.log`
+    const logFilePath = path.join(__path, logFileName)
+    await fs.appendFile(logFilePath, logs, 'utf-8')
+  } catch (e) {
+    if (e.code === 'ENOENT') {
+      throw new Error(`Logs unavailable to write`)
+    } else {
+      throw new Error(`${e.code} : ${e.message}`, { cause: e })
+    }
+  }
 }
