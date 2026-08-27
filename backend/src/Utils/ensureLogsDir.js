@@ -35,10 +35,6 @@ export async function writingLogs(logs) {
     const logFilePath = path.join(__path, logFileName)
     await fs.appendFile(logFilePath, logs, 'utf-8')
   } catch (e) {
-    if (e.code === 'ENOENT') {
-      throw new Error(`Logs unavailable to write`)
-    } else {
-      throw new Error(`${e.code} : ${e.message}`, { cause: e })
-    }
+    throw new Error(`Failed to write application logs`, { cause: e })
   }
 }

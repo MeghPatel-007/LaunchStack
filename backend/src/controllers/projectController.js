@@ -39,5 +39,17 @@ export function getProjectStats(req, res) {
 export function getProjectById(req, res) {
   const id = req.params.id
   if (Object.hasOwn(data, id)) res.json(data[id])
-  else res.status(404).json({ error: 'Id does not exists' }) // http status code and msg
+  else {
+    res.status(404).json({ error: 'Id does not exists' }) // http status code and msg
+  }
+}
+
+export function deleteProjectById(req, res) {
+  const id = req.params.id
+  if (Object.hasOwn(data, id)) {
+    delete data[id]
+    res.json(`Project ID ${id} is deleted successfully`)
+  } else {
+    res.status(404).json({ error: 'Id does not exists' })
+  }
 }

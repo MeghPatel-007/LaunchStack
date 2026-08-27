@@ -5,6 +5,7 @@ import {
   getProjects,
   getProjectById,
   getProjectStats,
+  deleteProjectById,
 } from './controllers/projectController.js'
 
 // * application
@@ -21,7 +22,7 @@ app.use('/', async (req, res, next) => {
   // if i donot put '/' then also it would pass through it
   const logs = req.method + req.path + '\n'
   await writingLogs(logs)
-  next()
+  next() // pass the error to the centralized error handling middleware
 })
 
 app.use(express.json()) // used to prase the req.body
@@ -36,3 +37,17 @@ app.get('/projects/stats', getProjectStats)
 
 // * routes of ids or any parameter route should be at last
 app.get('/projects/:id', getProjectById)
+
+app.delete('/projects/:id', deleteProjectById)
+
+// * just for testing purpose
+// app.get('/test-route', (req, res, next) => {
+//   const error = new Error('testing route')
+//   next(error)
+// })
+
+// ? centralize error handling middleware => converts error into http response
+app.use((err, req, res, next) => {
+  console.console.error(err)
+  res.status(500).json({ error: 'Interval Server Error' })
+})
