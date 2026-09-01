@@ -2,6 +2,8 @@ import { validatePortNumber } from './config.js'
 import { ensureLogsDir } from './utils/ensureLogsDir.js'
 // * app connection
 import { app } from './app.js'
+// * db connection
+//? import pool from '../db/pool.js' just for testing connection
 
 // * intial setup
 const port = validatePortNumber() // validates the port number

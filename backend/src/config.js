@@ -27,3 +27,37 @@ export function validatePortNumber() {
   }
   return validPort
 }
+
+export function getDatabaseConfig() {
+  const host = process.env.DB_HOST;
+  const port = process.env.DB_PORT;
+  const database = process.env.DB_NAME;
+  const user = process.env.DB_USER;
+  const password = process.env.DB_PASSWORD;
+  if(typeof host !== 'string' || host.trim() === ''){ // does not exist
+    throw new Error("Database Host name is empty or missing");
+  }
+  if(typeof port !== 'string' || port.trim() === ''){
+    throw new Error("Database port number is empty or missing");
+  }
+  if(Number.isNaN(Number(port)) || !Number.isInteger(Number(port)) || (1 > Number(port) && Number(port) > 65535)){
+    throw new Error("Database port number is not valid");
+  }
+  if(typeof database !== 'string' || database.trim() === ''){
+    throw new Error("Database name is empty or missing");
+  }
+  if(typeof user !== 'string' || user.trim() === ''){
+    throw new Error("Database user name is empty or missing");
+  }
+  if(typeof password !== 'string' || password.trim() === ''){
+    throw new Error("Database password is empty or missing");
+  }
+
+  return {
+    host : host.trim(),
+    port : Number(port),
+    database : database.trim(),
+    user : user.trim(),
+    password : password.trim()
+  }
+}

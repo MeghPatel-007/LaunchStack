@@ -1,3 +1,4 @@
+
 -- testcases
 -- 1
 INSERT INTO projects (name, project_type)
@@ -52,3 +53,4 @@ RETURNING phase_id, project_id, name, status, position, start_time, finished_tim
 --     (project_id, name, status, position)
 -- VALUES
 --     (1, 'Duplicate Position', 'NOT_STARTED', 1);
+
