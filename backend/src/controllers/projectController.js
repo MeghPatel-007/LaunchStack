@@ -6,11 +6,11 @@ import pool from '../../db/pool.js'
 //   2: { name: 'Project2', id: 2, type: 'hardware' },
 //   3: { name: 'Project3', id: 3, type: 'software' },
 // }
-const dataStats = {
-  1: { workDone: '10%', id: 1, type: 'software' },
-  2: { workDone: '30%', id: 2, type: 'hardware' },
-  3: { workDone: '100%', id: 3, type: 'software' },
-}
+// const dataStats = {
+//   1: { workDone: '10%', id: 1, type: 'software' },
+//   2: { workDone: '30%', id: 2, type: 'hardware' },
+//   3: { workDone: '100%', id: 3, type: 'software' },
+// }
 
 // * without db connection
 // export function getProjects(req, res) {
@@ -57,6 +57,13 @@ const dataStats = {
 //   res.json(dataStats)
 // }
 
+// ? handles these request and responses
+// GET /projects
+// POST /projects
+// PUT /projects/:id
+// DELETE /projects/:id
+// GET /projects/stats
+
 export async function getProjects(req, res) {
   const type = req.query.type
   try {
@@ -71,7 +78,7 @@ export async function getProjects(req, res) {
     }
     res.json(result.rows)
   } catch (e) {
-    res.status(500).json({ databaseError: `${e.message}` })
+    res.status(500).json({ databaseError: e.message })
   }
 }
 
@@ -88,7 +95,7 @@ export async function createProject(req, res) {
     }
     const query = `
     insert into projects(name,description,project_type,tech_stack)
-    values ($1,$2,$3,$4) returning project_id
+    values ($1,$2,$3,$4) returning *
     `
     const result = await pool.query(query, [
       name.trim(),
@@ -98,7 +105,7 @@ export async function createProject(req, res) {
     ])
     res.status(201).json({
       msg: 'Project created successfully',
-      project_id: result.rows[0].project_id,
+      project: result.rows[0],
     })
   } catch (e) {
     res.status(500).json({ databaseError: e.message })
@@ -152,6 +159,51 @@ export async function getProjectById(req, res) {
       return res.status(404).json({ error: 'Id does not exist' })
     }
     res.json(result.rows[0])
+  } catch (e) {
+    res.status(500).json({ databaseError: e.message })
+  }
+}
+
+export async function putProjectById(req, res) {
+  const id = req.params.id
+  const { name, description, project_type, tech_stack } = req.body
+  try {
+    if (typeof name !== 'string' || name.trim() === '') {
+      return res.status(400).json({ error: 'Project Name is empty or missing' })
+    }
+    if (typeof project_type !== 'string' || name.trim() === '') {
+      return res.status(400).json({ error: 'Project Type is empty or missing' })
+    }
+    const query = `
+      update projects
+      set name = $2,
+      description = $3,
+      project_type = $4,
+      tech_stack = $5,
+      updated_at = current_timestamp
+      where project_id = $1
+      returning project_id;
+    `
+    const result = await pool.query(
+      `select project_id
+      from projects
+      where project_id = $1`,
+      [id],
+    )
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Id does not exist' })
+    }
+    const updateResult = await pool.query(query, [
+      id,
+      name,
+      description,
+      project_type,
+      tech_stack,
+    ])
+    res.status(200).json({
+      msg: 'Project updated successfully',
+      project_id: updateResult.rows[0].project_id,
+    })
   } catch (e) {
     res.status(500).json({ databaseError: e.message })
   }
