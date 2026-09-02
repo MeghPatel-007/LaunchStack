@@ -53,6 +53,10 @@ const dataStats = {
 //   }
 //}
 
+// export function getProjectStats(req, res) {
+//   res.json(dataStats)
+// }
+
 export async function getProjects(req, res) {
   const type = req.query.type
   try {
@@ -82,10 +86,16 @@ export async function createProject(req, res) {
     ) {
       return res.status(400).json({ error: 'New project cannot be received' })
     }
-    const result = await pool.query(
-      'insert into projects(name,description,project_type,tech_stack) values ($1,$2,$3,$4) returning project_id',
-      [name.trim(), description, project_type.trim(), tech_stack],
-    )
+    const query = `
+    insert into projects(name,description,project_type,tech_stack)
+    values ($1,$2,$3,$4) returning project_id
+    `
+    const result = await pool.query(query, [
+      name.trim(),
+      description,
+      project_type.trim(),
+      tech_stack,
+    ])
     res.status(201).json({
       msg: 'Project created successfully',
       project_id: result.rows[0].project_id,
@@ -95,8 +105,40 @@ export async function createProject(req, res) {
   }
 }
 
-export function getProjectStats(req, res) {
-  res.json(dataStats)
+export async function getProjectStats(req, res) {
+  try {
+    const query = `with phase_stats as (
+      select pp.project_id,
+      count(pp.phase_id) as total_phases,
+      count(pp.status) filter(where pp.status = 'COMPLETED') as completed_phases
+      from project_phases as pp
+      group by pp.project_id
+      )
+      select p.project_id,
+      p.name,
+      p.project_type,
+      coalesce(ps.total_phases,0)::int as total_phases,
+      count(pp.status) filter(where pp.status = 'NOT_STARTED')::int as not_started_phases,
+      count(pp.status) filter(where pp.status = 'IN_PROGRESS')::int as in_progress_phases,
+      coalesce(ps.completed_phases,0)::int as completed_phases,
+      case
+        when coalesce(ps.total_phases,0) = 0
+          then 0
+        else
+        ((ps.completed_phases::numeric / ps.total_phases)*100)::int
+        end as work_done
+      from projects as p
+      left join project_phases as pp
+      on p.project_id = pp.project_id
+      left join phase_stats as ps
+      on ps.project_id = p.project_id
+      group by p.project_id,ps.total_phases,ps.completed_phases
+      order by p.project_id;`
+    const result = await pool.query(query)
+    res.json(result.rows)
+  } catch (e) {
+    res.status(500).json({ databaseError: e.message })
+  }
 }
 
 export async function getProjectById(req, res) {
