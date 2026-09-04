@@ -171,7 +171,7 @@ export async function putProjectById(req, res) {
     if (typeof name !== 'string' || name.trim() === '') {
       return res.status(400).json({ error: 'Project Name is empty or missing' })
     }
-    if (typeof project_type !== 'string' || name.trim() === '') {
+    if (typeof project_type !== 'string' || project_type.trim() === '') {
       return res.status(400).json({ error: 'Project Type is empty or missing' })
     }
     const query = `

@@ -233,3 +233,38 @@ where phase_id in (2,3);
 
 DROP TABLE IF EXISTS projects_phase CASCADE;
 DROP TABLE IF EXISTS projects CASCADE;
+
+insert into project_phases(project_id,name,status,position,start_time,finished_time)
+values  (2,'srs','NOT_STARTED',1,null,null),
+		(2,'authentication','IN_PROGRESS',2,'2026-08-31 21:48:04.961983+05:30',null),
+		(2,'Documentation','COMPLETED',3,'2026-08-31 18:00:00+05:30','2026-08-31 20:00:00+05:30');
+
+-- feature
+with phase_stats as (
+select pp.project_id,
+count(pp.phase_id) as total_phases,
+count(pp.status) filter(where pp.status = 'COMPLETED') as completed_phases
+from project_phases as pp
+group by pp.project_id
+)
+select p.project_id,
+p.name,
+p.project_type,
+coalesce(ps.total_phases,0) as total_phases,
+count(pp.status) filter(where pp.status = 'NOT_STARTED') as not_started_phases,
+count(pp.status) filter(where pp.status = 'IN_PROGRESS') as in_progress_phases,
+coalesce(ps.completed_phases,0) as completed_phases,
+case
+	when coalesce(ps.total_phases,0) = 0
+		then 0
+	else
+	((ps.completed_phases::numeric / ps.total_phases)*100)::int
+	end as work_done
+from projects as p
+left join project_phases as pp
+on p.project_id = pp.project_id
+left join phase_stats as ps
+on ps.project_id = p.project_id
+group by p.project_id,ps.total_phases,ps.completed_phases
+order by p.project_id;
+

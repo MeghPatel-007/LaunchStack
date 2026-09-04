@@ -45,7 +45,19 @@ create table project_phases(
         ),
 	constraint fk_project_id
         foreign key (project_id)
-        references projects(project_id),
+        references projects(project_id)
+        on delete cascade,
     constraint unique_project_position
 	    unique(project_id,position)
+);
+
+-- Users table
+create table users(
+	user_id int generated always as identity primary key,
+	username text not null,
+	email text not null,
+	password_hash text not null,
+	created_at timestamptz not null default current_timestamp,
+	updated_at timestamptz not null default current_timestamp,
+	unique (email)
 );
