@@ -313,3 +313,16 @@ LIMIT 1;
 SELECT *
 FROM projects
 WHERE name = 'Transaction Test';
+
+select p.project_id,name,description,project_type,tech_stack,role from projects as p 
+join project_members as pm
+on p.project_id = pm.project_id
+where user_id = 3 and project_type = 'software';
+
+select * from users;
+select * from project_members;
+
+select p.project_id,name,description,project_type,tech_stack,role from projects as p 
+join project_members as pm
+on p.project_id = pm.project_id
+where pm.user_id = 3 and p.project_id = 1;
