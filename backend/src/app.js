@@ -1,8 +1,9 @@
 import express from 'express'
 import { writingLogs } from './utils/ensureLogsDir.js'
-import projectRouter from '../routes/projectRoutes.js'
-import projectPhaseRouter from '../routes/projectPhaseRoutes.js'
-import authRouter from '../routes/authRoutes.js'
+import projectRouter from './routes/projectRoutes.js'
+import projectPhaseRouter from './routes/projectPhaseRoutes.js'
+import authRouter from './routes/authRoutes.js'
+import { authenticate } from './middleware/authMiddleware.js'
 
 // * application
 export const app = express() // express application obj
@@ -25,11 +26,11 @@ app.use(express.json()) // used to prase the req.body
 
 // ? Express routes
 app.use('/auth', authRouter)
-app.use('/projects', projectRouter)
+app.use('/projects',authenticate, projectRouter)
 app.use('/', projectPhaseRouter)
 
 // ? centralize error handling middleware => converts error into http response
 app.use((err, req, res, next) => {
   console.error(err)
-  res.status(500).json({ error: 'Interval Server Error' })
+  res.status(500).json({ error: 'Internal Server Error' })
 })

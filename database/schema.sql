@@ -61,3 +61,22 @@ create table users(
 	updated_at timestamptz not null default current_timestamp,
 	unique (email)
 );
+
+--membership table
+--create membership
+create table project_members(
+	membership_id int primary key generated always as identity not null,
+	user_id int not null,
+	project_id int not null,
+	role text not null check(role in ('OWNER','MEMBER')),
+	created_at TIMESTAMPTZ not null default current_timestamp,
+	constraint fk_project_id
+	foreign key (project_id)
+	references projects(project_id)
+	on delete cascade,
+	constraint fk_user_id
+	foreign key (user_id)
+	references users(user_id)
+	on delete cascade,
+	unique (user_id,project_id)
+)

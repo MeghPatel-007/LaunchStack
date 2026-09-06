@@ -1,4 +1,4 @@
-import pool from '../../db/pool.js'
+import pool from '../db/pool.js'
 // ! never make circular dependencies
 // * experimental data
 // const data = {
@@ -63,17 +63,37 @@ import pool from '../../db/pool.js'
 // PUT /projects/:id
 // DELETE /projects/:id
 // GET /projects/stats
+// POST /project/:id/members
+// GET /project/:id/members
+// DELETE /project/:id/members
 
 export async function getProjects(req, res) {
   const type = req.query.type
+  const userId = req.user.user_id
   try {
     let result
+    let query
     if (type === undefined) {
-      result = await pool.query('select * from projects')
+      query = `
+        select p.project_id,name,description,project_type,tech_stack,role
+        from projects as p
+        join project_members as pm
+        on p.project_id = pm.project_id
+        where user_id = $1;
+      `
+      result = await pool.query(query, [userId])
     } else {
+      query = `
+        select p.project_id,name,description,project_type,tech_stack,role
+        from projects as p
+        join project_members as pm
+        on p.project_id = pm.project_id
+        where pm.user_id = $1
+        and p.project_type = $2;
+      `
       result = await pool.query(
-        'select * from projects where project_type = $1',
-        [type], // ! it is done to prevent sql injection
+        query,
+        [userId, type], // ! it is done to prevent sql injection
       ) // to check the db and db_user
     }
     res.json(result.rows)
@@ -84,7 +104,10 @@ export async function getProjects(req, res) {
 
 export async function createProject(req, res) {
   const { name, description, project_type, tech_stack } = req.body
+  const userId = req.user.user_id
+  const client = await pool.connect() // pool connected
   try {
+    //validation
     if (
       typeof name !== 'string' ||
       name.trim() === '' ||
@@ -93,22 +116,36 @@ export async function createProject(req, res) {
     ) {
       return res.status(400).json({ error: 'New project cannot be received' })
     }
-    const query = `
+    // transaction
+    await client.query('begin') // transcation started
+    const newProjectQuery = `
     insert into projects(name,description,project_type,tech_stack)
-    values ($1,$2,$3,$4) returning *
+    values ($1,$2,$3,$4)
+    returning project_id
     `
-    const result = await pool.query(query, [
+    const newProjectQueryResult = await client.query(newProjectQuery, [
       name.trim(),
       description,
       project_type.trim(),
       tech_stack,
     ])
+    const ownershipQuery = `
+    insert into project_members (user_id,project_id,role)
+    values ($1,$2,'OWNER')
+    returning project_id
+    `
+    const newProjectId = newProjectQueryResult.rows[0].project_id
+    const result = await client.query(ownershipQuery, [userId, newProjectId])
+    await client.query('commit') // commit and transaction done
     res.status(201).json({
       msg: 'Project created successfully',
-      project: result.rows[0],
+      projectID: result.rows[0].project_id,
     })
   } catch (e) {
+    await client.query('rollback')
     res.status(500).json({ databaseError: e.message })
+  } finally {
+    client.release() // returns that connection back to the pool so another request can use it
   }
 }
 
@@ -150,11 +187,16 @@ export async function getProjectStats(req, res) {
 
 export async function getProjectById(req, res) {
   const id = req.params.id
+  const userId = req.user.user_id
   try {
-    const result = await pool.query(
-      'select * from projects where project_id = $1',
-      [id],
-    )
+    const query = `
+      select p.project_id,name,description,project_type,tech_stack,role
+      from projects as p
+      join project_members as pm
+      on p.project_id = pm.project_id
+      where pm.user_id = $1 and p.project_id = $2;
+    `
+    const result = await pool.query(query, [userId, id])
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Id does not exist' })
     }
@@ -184,20 +226,11 @@ export async function putProjectById(req, res) {
       where project_id = $1
       returning project_id;
     `
-    const result = await pool.query(
-      `select project_id
-      from projects
-      where project_id = $1`,
-      [id],
-    )
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Id does not exist' })
-    }
     const updateResult = await pool.query(query, [
       id,
-      name,
+      name.trim(),
       description,
-      project_type,
+      project_type.trim(),
       tech_stack,
     ])
     res.status(200).json({
@@ -220,6 +253,104 @@ export async function deleteProjectById(req, res) {
       return res.status(404).json({ error: 'Id does not exist' })
     }
     res.json('successfully deleted')
+  } catch (e) {
+    res.status(500).json({ databaseError: e.message })
+  }
+}
+
+export async function addMemberbyId(req, res) {
+  const projectId = req.params.id
+  const userId = req.body.userId
+  try {
+    if (
+      typeof userId !== 'number' ||
+      Number.isNaN(userId) ||
+      !Number.isInteger(userId)
+    ) {
+      return res.status(400).json('UserId is invalid')
+    }
+    const userCheck = `
+      select user_id
+      from users
+      where user_id = $1
+    `
+    const userCheckResult = await pool.query(userCheck, [userId])
+    if (userCheckResult.rowCount === 0) {
+      return res.status(404).json('User id does not exists')
+    }
+    const memberCheck = `
+      select user_id
+      from project_members
+      where user_id = $1 and project_id = $2 and role = 'MEMBER'
+    `
+    const memberCheckResult = await pool.query(memberCheck, [userId, projectId])
+    if (memberCheckResult.rowCount === 1) {
+      return res.status(200).json('User is already a member')
+    }
+    const query = `
+      insert into project_members (user_id,project_id,role)
+      values ($1,$2,'MEMBER')
+      returning user_id
+    `
+    const result = await pool.query(query, [userId, projectId])
+    res.status(200).json({
+      msg: 'User is add as a member',
+      userId: result.rows[0],
+    })
+  } catch (e) {
+    res.status(500).json({ databaseError: e.message })
+  }
+}
+
+export async function getProjectMembers(req, res) {
+  const id = req.params.id
+  try {
+    const query = `
+      select u.user_id,
+      u.username,
+      u.email,
+      pm.role,
+      pm.created_at
+      from project_members pm
+      join users u
+      on pm.user_id = u.user_id
+      where project_id = $1
+      order by
+      case
+      when pm.role = 'OWNER' then 1
+      when pm.role = 'MEMBER' then 2
+      end,
+      u.username;
+    `
+    const result = await pool.query(query, [id])
+    res.status(200).json(result.rows)
+  } catch (e) {
+    res.status(500).json({ databaseError: e.message })
+  }
+}
+
+export async function deleteMemberById(req, res) {
+  const projectId = req.params.id
+  const memberId = Number(req.params.userId)
+  const ownerId = req.user.user_id
+  try {
+    if (ownerId === memberId) {
+      return res.status(403).json('Project owner cannot remove themselves')
+    }
+    const query = `
+      delete from project_members
+      where project_id = $1
+      and user_id = $2
+      returning user_id;
+    `
+    const result = await pool.query(query, [projectId, memberId])
+    if (result.rowCount === 0) {
+      return res.status(404).json('User is not a member of this project')
+    }
+    res.status(200).json({
+      msg: 'User is removed from the project',
+      userId: result.rows[0].user_id,
+    })
   } catch (e) {
     res.status(500).json({ databaseError: e.message })
   }

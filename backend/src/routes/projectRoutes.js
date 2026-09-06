@@ -1,12 +1,16 @@
 import express from 'express'
 import {
+  addMemberbyId,
   createProject,
+  deleteMemberById,
   deleteProjectById,
   getProjectById,
+  getProjectMembers,
   getProjects,
   getProjectStats,
   putProjectById,
-} from '../src/controllers/projectController.js'
+} from '../controllers/projectController.js'
+import { requireProjectOwner } from '../middleware/projectAuthorization.js'
 
 const projectRouter = express.Router()
 // ! IMP : Route Order
@@ -19,10 +23,19 @@ projectRouter.get('/stats', getProjectStats)
 // * routes of ids or any parameter route should be at last
 projectRouter.get('/:id', getProjectById)
 
-projectRouter.put('/:id', putProjectById)
+projectRouter.put('/:id', requireProjectOwner, putProjectById)
 
-projectRouter.delete('/:id', deleteProjectById)
+projectRouter.delete('/:id', requireProjectOwner, deleteProjectById)
 
+projectRouter.post('/:id/members', requireProjectOwner, addMemberbyId)
+
+projectRouter.get('/:id/members', getProjectMembers)
+
+projectRouter.delete(
+  '/:id/members/:userId',
+  requireProjectOwner,
+  deleteMemberById,
+)
 // * just for testing purpose
 // app.get('/test-route', (req, res, next) => {
 //   const error = new Error('testing route')

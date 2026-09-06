@@ -1,5 +1,5 @@
 import pg from 'pg'
-import { getDatabaseConfig } from '../src/config.js'
+import { getDatabaseConfig } from '../config.js'
 
 const config = getDatabaseConfig()
 const { Pool } = pg

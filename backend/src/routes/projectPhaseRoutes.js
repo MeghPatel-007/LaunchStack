@@ -5,7 +5,7 @@ import {
   getPhaseById,
   getPhases,
   putPhaseById,
-} from '../src/controllers/projectPhaseController.js'
+} from '../controllers/projectPhaseController.js'
 
 const projectPhaseRouter = express.Router()
 

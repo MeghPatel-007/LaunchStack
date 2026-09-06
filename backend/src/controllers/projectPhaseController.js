@@ -5,7 +5,7 @@
 // PUT /phases/:id
 // DELETE /phases/:id
 
-import pool from '../../db/pool.js'
+import pool from '../db/pool.js'
 
 function isParsableTime(value) {
   return typeof value === 'string' && !Number.isNaN(Date.parse(value))
@@ -13,10 +13,10 @@ function isParsableTime(value) {
 
 export async function createPhase(req, res) {
   const id = req.params.projectId
-  const { name, description, status, position, start_time , finished_time } =
+  const { name, description, status, position, start_time, finished_time } =
     req.body
-    const startTime = start_time ?? null;
-    const finishedTime = finished_time ?? null;
+  const startTime = start_time ?? null
+  const finishedTime = finished_time ?? null
 
   const validStatus = ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED']
   try {
@@ -64,13 +64,19 @@ export async function createPhase(req, res) {
       status === 'NOT_STARTED' &&
       (startTime !== null || finishedTime !== null)
     ) {
-      return res.status(400).json({ error: 'NOT_STARTED cannot have timestamps' })
+      return res
+        .status(400)
+        .json({ error: 'NOT_STARTED cannot have timestamps' })
     }
     if (
       status === 'IN_PROGRESS' &&
       (!isParsableTime(startTime) || finishedTime !== null)
     ) {
-      return res.status(400).json({ error: 'IN_PROGRESS requires a valid startTime and no finished_time' })
+      return res
+        .status(400)
+        .json({
+          error: 'IN_PROGRESS requires a valid startTime and no finished_time',
+        })
     }
     if (
       status === 'COMPLETED' &&
@@ -153,8 +159,8 @@ export async function putPhaseById(req, res) {
   const id = req.params.id
   const { name, description, status, position, start_time, finished_time } =
     req.body
-    const startTime = start_time ?? null;
-    const finishedTime = finished_time ?? null;
+  const startTime = start_time ?? null
+  const finishedTime = finished_time ?? null
   const validStatus = ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED']
   try {
     const phaseIdcheck = await pool.query(
@@ -203,17 +209,23 @@ export async function putPhaseById(req, res) {
         .status(400) // error status code
         .json({ error: 'Invalid Phase status' })
     }
-     if (
+    if (
       status === 'NOT_STARTED' &&
       (startTime !== null || finishedTime !== null)
     ) {
-      return res.status(400).json({ error: 'NOT_STARTED cannot have timestamps' })
+      return res
+        .status(400)
+        .json({ error: 'NOT_STARTED cannot have timestamps' })
     }
     if (
       status === 'IN_PROGRESS' &&
       (!isParsableTime(startTime) || finishedTime !== null)
     ) {
-      return res.status(400).json({ error: 'IN_PROGRESS requires a valid startTime and no finished_time' })
+      return res
+        .status(400)
+        .json({
+          error: 'IN_PROGRESS requires a valid startTime and no finished_time',
+        })
     }
     if (
       status === 'COMPLETED' &&

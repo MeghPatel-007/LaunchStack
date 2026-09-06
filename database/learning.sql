@@ -268,3 +268,48 @@ on ps.project_id = p.project_id
 group by p.project_id,ps.total_phases,ps.completed_phases
 order by p.project_id;
 
+--feature getPhase
+
+create table users(
+	user_id int generated as always identity primary key,
+	username text not null,
+	email text not null,
+	password_hash text not null,
+	created_at timestamptz not null default current_timestamp,
+	updated_at timestamptz not null default current_timestamp,
+	unique (email)
+);
+
+insert into (username,email,password_hash)
+values ('Megh','megh@gmail.com','poiuytrew8765432jhgfd');
+
+create table project_members(
+	membership_id int primary key generated always as identity,
+	user_id int not null, 
+	project_id int not null, 
+	role text not null check(role in ('OWNER','MEMBER')),
+	created_at TIMESTAMPTZ not null default current_timestamp,
+	constraint fk_project_id
+	foreign key (project_id)
+	references projects(project_id)
+	on delete cascade,
+	constraint fk_user_id
+	foreign key (user_id)
+	references users(user_id)
+	on delete cascade,
+	unique (user_id,project_id)
+);
+
+INSERT INTO project_members (user_id, project_id, role)
+VALUES (2, 2, 'MEMBER');
+
+select * from projects;
+
+SELECT *
+FROM project_members
+ORDER BY membership_id DESC
+LIMIT 1;
+
+SELECT *
+FROM projects
+WHERE name = 'Transaction Test';
