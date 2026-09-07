@@ -6,10 +6,7 @@
 // DELETE /phases/:id
 
 import pool from '../db/pool.js'
-
-function isParsableTime(value) {
-  return typeof value === 'string' && !Number.isNaN(Date.parse(value))
-}
+import { isParsableTime } from '../utils/isParsableTime.js'
 
 export async function createPhase(req, res) {
   const id = req.params.projectId
@@ -72,11 +69,9 @@ export async function createPhase(req, res) {
       status === 'IN_PROGRESS' &&
       (!isParsableTime(startTime) || finishedTime !== null)
     ) {
-      return res
-        .status(400)
-        .json({
-          error: 'IN_PROGRESS requires a valid startTime and no finished_time',
-        })
+      return res.status(400).json({
+        error: 'IN_PROGRESS requires a valid startTime and no finished_time',
+      })
     }
     if (
       status === 'COMPLETED' &&
@@ -221,11 +216,9 @@ export async function putPhaseById(req, res) {
       status === 'IN_PROGRESS' &&
       (!isParsableTime(startTime) || finishedTime !== null)
     ) {
-      return res
-        .status(400)
-        .json({
-          error: 'IN_PROGRESS requires a valid startTime and no finished_time',
-        })
+      return res.status(400).json({
+        error: 'IN_PROGRESS requires a valid startTime and no finished_time',
+      })
     }
     if (
       status === 'COMPLETED' &&

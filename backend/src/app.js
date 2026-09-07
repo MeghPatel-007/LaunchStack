@@ -27,7 +27,7 @@ app.use(express.json()) // used to prase the req.body
 // ? Express routes
 app.use('/auth', authRouter)
 app.use('/projects',authenticate, projectRouter)
-app.use('/', projectPhaseRouter)
+app.use('/',authenticate, projectPhaseRouter)
 
 // ? centralize error handling middleware => converts error into http response
 app.use((err, req, res, next) => {

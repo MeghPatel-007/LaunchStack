@@ -150,6 +150,7 @@ export async function createProject(req, res) {
 }
 
 export async function getProjectStats(req, res) {
+  const userId = req.user.user_id
   try {
     const query = `with phase_stats as (
       select pp.project_id,
@@ -176,9 +177,12 @@ export async function getProjectStats(req, res) {
       on p.project_id = pp.project_id
       left join phase_stats as ps
       on ps.project_id = p.project_id
+      join project_members as pm
+      on p.project_id = pm.project_id
+      where pm.user_id = $1
       group by p.project_id,ps.total_phases,ps.completed_phases
       order by p.project_id;`
-    const result = await pool.query(query)
+    const result = await pool.query(query, [userId])
     res.json(result.rows)
   } catch (e) {
     res.status(500).json({ databaseError: e.message })
