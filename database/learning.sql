@@ -326,3 +326,5 @@ select p.project_id,name,description,project_type,tech_stack,role from projects 
 join project_members as pm
 on p.project_id = pm.project_id
 where pm.user_id = 3 and p.project_id = 1;
+
+select * from project_phases;

@@ -79,7 +79,7 @@ export async function getProjects(req, res) {
         from projects as p
         join project_members as pm
         on p.project_id = pm.project_id
-        where user_id = $1;
+        where pm.user_id = $1;
       `
       result = await pool.query(query, [userId])
     } else {
@@ -98,7 +98,7 @@ export async function getProjects(req, res) {
     }
     res.json(result.rows)
   } catch (e) {
-    res.status(500).json({ databaseError: e.message })
+    next(e)
   }
 }
 
@@ -107,15 +107,6 @@ export async function createProject(req, res) {
   const userId = req.user.user_id
   const client = await pool.connect() // pool connected
   try {
-    //validation
-    if (
-      typeof name !== 'string' ||
-      name.trim() === '' ||
-      typeof project_type !== 'string' ||
-      project_type.trim() === ''
-    ) {
-      return res.status(400).json({ error: 'New project cannot be received' })
-    }
     // transaction
     await client.query('begin') // transcation started
     const newProjectQuery = `
@@ -143,7 +134,7 @@ export async function createProject(req, res) {
     })
   } catch (e) {
     await client.query('rollback')
-    res.status(500).json({ databaseError: e.message })
+    next(e)
   } finally {
     client.release() // returns that connection back to the pool so another request can use it
   }
@@ -185,7 +176,7 @@ export async function getProjectStats(req, res) {
     const result = await pool.query(query, [userId])
     res.json(result.rows)
   } catch (e) {
-    res.status(500).json({ databaseError: e.message })
+    next(e)
   }
 }
 
@@ -206,7 +197,7 @@ export async function getProjectById(req, res) {
     }
     res.json(result.rows[0])
   } catch (e) {
-    res.status(500).json({ databaseError: e.message })
+    next(e)
   }
 }
 
@@ -214,12 +205,6 @@ export async function putProjectById(req, res) {
   const id = req.params.id
   const { name, description, project_type, tech_stack } = req.body
   try {
-    if (typeof name !== 'string' || name.trim() === '') {
-      return res.status(400).json({ error: 'Project Name is empty or missing' })
-    }
-    if (typeof project_type !== 'string' || project_type.trim() === '') {
-      return res.status(400).json({ error: 'Project Type is empty or missing' })
-    }
     const query = `
       update projects
       set name = $2,
@@ -237,12 +222,15 @@ export async function putProjectById(req, res) {
       project_type.trim(),
       tech_stack,
     ])
+    if (updateResult.rowCount === 0) {
+      return res.status(404).json('Project doesnot exist')
+    }
     res.status(200).json({
       msg: 'Project updated successfully',
       project_id: updateResult.rows[0].project_id,
     })
   } catch (e) {
-    res.status(500).json({ databaseError: e.message })
+    next(e)
   }
 }
 
@@ -258,7 +246,7 @@ export async function deleteProjectById(req, res) {
     }
     res.json('successfully deleted')
   } catch (e) {
-    res.status(500).json({ databaseError: e.message })
+    next(e)
   }
 }
 
@@ -266,13 +254,6 @@ export async function addMemberbyId(req, res) {
   const projectId = req.params.id
   const userId = req.body.userId
   try {
-    if (
-      typeof userId !== 'number' ||
-      Number.isNaN(userId) ||
-      !Number.isInteger(userId)
-    ) {
-      return res.status(400).json('UserId is invalid')
-    }
     const userCheck = `
       select user_id
       from users
@@ -289,7 +270,7 @@ export async function addMemberbyId(req, res) {
     `
     const memberCheckResult = await pool.query(memberCheck, [userId, projectId])
     if (memberCheckResult.rowCount === 1) {
-      return res.status(200).json('User is already a member')
+      return res.status(409).json('User is already a member')
     }
     const query = `
       insert into project_members (user_id,project_id,role)
@@ -302,7 +283,7 @@ export async function addMemberbyId(req, res) {
       userId: result.rows[0],
     })
   } catch (e) {
-    res.status(500).json({ databaseError: e.message })
+    next(e)
   }
 }
 
@@ -329,7 +310,7 @@ export async function getProjectMembers(req, res) {
     const result = await pool.query(query, [id])
     res.status(200).json(result.rows)
   } catch (e) {
-    res.status(500).json({ databaseError: e.message })
+    next(e)
   }
 }
 
@@ -356,6 +337,6 @@ export async function deleteMemberById(req, res) {
       userId: result.rows[0].user_id,
     })
   } catch (e) {
-    res.status(500).json({ databaseError: e.message })
+    next(e)
   }
 }

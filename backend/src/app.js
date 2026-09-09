@@ -26,11 +26,20 @@ app.use(express.json()) // used to prase the req.body
 
 // ? Express routes
 app.use('/auth', authRouter)
-app.use('/projects',authenticate, projectRouter)
-app.use('/',authenticate, projectPhaseRouter)
+app.use('/projects', authenticate, projectRouter)
+app.use('/', authenticate, projectPhaseRouter)
 
 // ? centralize error handling middleware => converts error into http response
 app.use((err, req, res, next) => {
   console.error(err)
-  res.status(500).json({ error: 'Internal Server Error' })
+  if (err.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: 'Invalid JSON' })
+  }
+  if (err.code === '23505') {
+    return res.status(409).json({ error: 'Resource already exists' })
+  }
+  if (err.code === '23514') {
+    return res.status(400).json({ error: 'Invalid data' })
+  }
+  res.status(500).json({ error: 'Internal Server Error', type: err.type })
 })

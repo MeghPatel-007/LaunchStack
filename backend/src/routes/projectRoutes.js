@@ -14,28 +14,69 @@ import {
   requireProjectMember,
   requireProjectOwner,
 } from '../middleware/projectAuthorization.js'
+import {
+  validateId,
+  validateOptionalStrings,
+  validatePositiveInteger,
+  validateRequiredStrings,
+} from '../middleware/validation.js'
 
 const projectRouter = express.Router()
 // ! IMP : Route Order
-projectRouter.post('/', createProject)
+projectRouter.post(
+  '/',
+  validateRequiredStrings(['name', 'project_type']),
+  validateOptionalStrings(['description', 'tech_stack']),
+  createProject,
+)
 
 projectRouter.get('/', getProjects)
 
 projectRouter.get('/stats', getProjectStats)
 
 // * routes of ids or any parameter route should be at last
-projectRouter.get('/:id', requireProjectMember, getProjectById)
+projectRouter.get(
+  '/:id',
+  validateId('id'),
+  requireProjectMember,
+  getProjectById,
+)
 
-projectRouter.put('/:id', requireProjectOwner, putProjectById)
+projectRouter.put(
+  '/:id',
+  validateId('id'),
+  requireProjectOwner,
+  validateRequiredStrings(['name', 'project_type']),
+  validateOptionalStrings(['description', 'tech_stack']),
+  putProjectById,
+)
 
-projectRouter.delete('/:id', requireProjectOwner, deleteProjectById)
+projectRouter.delete(
+  '/:id',
+  validateId('id'),
+  requireProjectOwner,
+  deleteProjectById,
+)
 
-projectRouter.post('/:id/members', requireProjectOwner, addMemberbyId)
+projectRouter.post(
+  '/:id/members',
+  validateId('id'),
+  requireProjectOwner,
+  validatePositiveInteger(['userId']),
+  addMemberbyId,
+)
 
-projectRouter.get('/:id/members', requireProjectMember, getProjectMembers)
+projectRouter.get(
+  '/:id/members',
+  validateId('id'),
+  requireProjectMember,
+  getProjectMembers,
+)
 
 projectRouter.delete(
   '/:id/members/:userId',
+  validateId('id'),
+  validateId('userId'),
   requireProjectOwner,
   deleteMemberById,
 )

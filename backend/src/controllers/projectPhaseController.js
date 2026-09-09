@@ -6,7 +6,7 @@
 // DELETE /phases/:id
 
 import pool from '../db/pool.js'
-import { isParsableTime } from '../utils/isParsableTime.js'
+import { validatePhase } from '../utils/phaseValidation.js'
 
 export async function createPhase(req, res) {
   const id = req.params.projectId
@@ -14,8 +14,6 @@ export async function createPhase(req, res) {
     req.body
   const startTime = start_time ?? null
   const finishedTime = finished_time ?? null
-
-  const validStatus = ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED']
   try {
     const projectIdcheck = await pool.query(
       `
@@ -27,18 +25,6 @@ export async function createPhase(req, res) {
     if (projectIdcheck.rowCount === 0) {
       return res.status(404).json({ error: 'Project does not exist' })
     }
-    if (typeof name !== 'string' || name.trim() === '') {
-      return res.status(400).json({ error: 'Phase Name is missing or empty' })
-    }
-    if (
-      typeof position !== 'number' ||
-      !Number.isInteger(position) ||
-      position < 1
-    ) {
-      return res
-        .status(400) // error status code
-        .json({ error: 'Phase Position is missing or negative integer' })
-    }
     const positionCheck = await pool.query(
       `
         select position
@@ -49,40 +35,10 @@ export async function createPhase(req, res) {
     )
     if (positionCheck.rowCount > 0) {
       return res
-        .status(400) // error status code
+        .status(409) // error status code
         .json({ error: 'Position for that project already exist' })
     }
-    if (typeof status !== 'string' || !validStatus.includes(status)) {
-      return res
-        .status(400) // error status code
-        .json({ error: 'Invalid Phase status' })
-    }
-    if (
-      status === 'NOT_STARTED' &&
-      (startTime !== null || finishedTime !== null)
-    ) {
-      return res
-        .status(400)
-        .json({ error: 'NOT_STARTED cannot have timestamps' })
-    }
-    if (
-      status === 'IN_PROGRESS' &&
-      (!isParsableTime(startTime) || finishedTime !== null)
-    ) {
-      return res.status(400).json({
-        error: 'IN_PROGRESS requires a valid startTime and no finished_time',
-      })
-    }
-    if (
-      status === 'COMPLETED' &&
-      (!isParsableTime(startTime) ||
-        !isParsableTime(finishedTime) ||
-        new Date(finishedTime) < new Date(startTime))
-    ) {
-      return res
-        .status(400)
-        .json({ error: 'Invalid startTime or finishedTime' })
-    }
+    validatePhase({ status, startTime, finishedTime })
     const query = `
         insert into project_phases(project_id,name, description, status, position, start_time, finished_time)
         values ($1,$2,$3,$4,$5,$6,$7)
@@ -102,7 +58,11 @@ export async function createPhase(req, res) {
       phase: result.rows[0],
     })
   } catch (e) {
-    res.status(500).json({ databaseError: e.message })
+    if (e.code == 'PHASE_VALIDATION') {
+      res.status(400).json({ error: e.message })
+    } else {
+      next(e)
+    }
   }
 }
 
@@ -128,7 +88,7 @@ export async function getPhases(req, res) {
     const result = await pool.query(query, [id])
     res.status(200).json(result.rows)
   } catch (e) {
-    res.status(500).json({ databaseError: e.message })
+    next(e)
   }
 }
 
@@ -146,7 +106,7 @@ export async function getPhaseById(req, res) {
     }
     res.status(200).json(result.rows[0])
   } catch (e) {
-    res.status(500).json({ databaseError: e.message })
+    next(e)
   }
 }
 
@@ -156,7 +116,6 @@ export async function putPhaseById(req, res) {
     req.body
   const startTime = start_time ?? null
   const finishedTime = finished_time ?? null
-  const validStatus = ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED']
   try {
     const phaseIdcheck = await pool.query(
       `
@@ -167,18 +126,6 @@ export async function putPhaseById(req, res) {
     )
     if (phaseIdcheck.rowCount === 0) {
       return res.status(404).json({ error: 'Phase id does not exist' })
-    }
-    if (typeof name !== 'string' || name.trim() === '') {
-      return res.status(400).json({ error: 'Phase Name is missing or empty' })
-    }
-    if (
-      typeof position !== 'number' ||
-      !Number.isInteger(position) ||
-      position < 1
-    ) {
-      return res
-        .status(400) // error status code
-        .json({ error: 'Phase Position is missing or negative integer' })
     }
     const positionCheck = await pool.query(
       `
@@ -199,37 +146,7 @@ export async function putPhaseById(req, res) {
         .status(400) // error status code
         .json({ error: 'Position is already used by another phase' })
     }
-    if (typeof status !== 'string' || !validStatus.includes(status)) {
-      return res
-        .status(400) // error status code
-        .json({ error: 'Invalid Phase status' })
-    }
-    if (
-      status === 'NOT_STARTED' &&
-      (startTime !== null || finishedTime !== null)
-    ) {
-      return res
-        .status(400)
-        .json({ error: 'NOT_STARTED cannot have timestamps' })
-    }
-    if (
-      status === 'IN_PROGRESS' &&
-      (!isParsableTime(startTime) || finishedTime !== null)
-    ) {
-      return res.status(400).json({
-        error: 'IN_PROGRESS requires a valid startTime and no finished_time',
-      })
-    }
-    if (
-      status === 'COMPLETED' &&
-      (!isParsableTime(startTime) ||
-        !isParsableTime(finishedTime) ||
-        new Date(finishedTime) < new Date(startTime))
-    ) {
-      return res
-        .status(400)
-        .json({ error: 'Invalid startTime or finishedTime' })
-    }
+    validatePhase({ status, startTime, finishedTime })
     const query = `
       update project_phases
       set name = $2,
@@ -256,7 +173,11 @@ export async function putPhaseById(req, res) {
       phase: result.rows[0],
     })
   } catch (e) {
-    res.status(500).json({ databaseError: e.message })
+    if (e.code == 'PHASE_VALIDATION') {
+      res.status(400).json({ error: e.message })
+    } else {
+      next(e)
+    }
   }
 }
 
@@ -272,6 +193,6 @@ export async function deletePhaseById(req, res) {
     }
     res.json('successfully deleted')
   } catch (e) {
-    res.status(500).json({ databaseError: e.message })
+    next(e)
   }
 }

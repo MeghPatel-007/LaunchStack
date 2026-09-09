@@ -42,7 +42,7 @@ export async function registration(req, res) {
       userId: result.rows[0],
     })
   } catch (e) {
-    res.status(500).json({ AuthenticationError: e.message })
+    next(e)
   }
 }
 
@@ -84,6 +84,6 @@ export async function login(req, res) {
       userId: result.rows[0].user_id,
     })
   } catch (e) {
-    res.status(500).json({ AuthenticationError: e.message })
+    next(e)
   }
 }
