@@ -18,7 +18,7 @@ export async function requireProjectOwner(req, res, next) {
   const ownerUserId = req.user.user_id
   try {
     if (!(await projectChecker(projectId))) {
-      return res.status(404).json('Project doesnot exist')
+      return res.status(404).json('Project does not exist')
     }
     const role = await getProjectRole(ownerUserId, projectId)
     if (role !== 'OWNER') {
@@ -35,14 +35,13 @@ export async function requireProjectMember(req, res, next) {
   const userId = req.user.user_id
   try {
     if (!(await projectChecker(projectId))) {
-      return res.status(404).json('Project doesnot exist')
+      return res.status(404).json('Project does not exist')
     }
     const role = await getProjectRole(userId, projectId)
     if (role === null) {
       return res.status(403).json('Non members are not allowed')
     }
 
-    next()
     next()
   } catch (e) {
     next(e)

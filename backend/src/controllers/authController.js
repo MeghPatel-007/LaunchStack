@@ -2,7 +2,7 @@ import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import pool from '../db/pool.js'
 
-export async function registration(req, res) {
+export async function registration(req, res, next) {
   const { username, email, password } = req.body
   const emailFormat = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/ // regex expression
   try {
@@ -28,7 +28,7 @@ export async function registration(req, res) {
       [validEmail],
     )
     if (emailCheck.rowCount > 0) {
-      return res.status(400).json('Email already exists')
+      return res.status(409).json('Email already exists')
     }
     const passwordHash = await bcrypt.hash(password, 10)
     const query = `
@@ -46,7 +46,7 @@ export async function registration(req, res) {
   }
 }
 
-export async function login(req, res) {
+export async function login(req, res, next) {
   const { email, password } = req.body
   const emailFormat = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/ // regex expression
   try {

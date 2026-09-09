@@ -1,27 +1,27 @@
 export function validateId(id) {
   return (req, res, next) => {
     const numericId = Number(req.params[id])
-    try {
-      if (
-        Number.isNaN(numericId) ||
-        !Number.isInteger(numericId) ||
-        numericId <= 0
-      ) {
-        return res.status(400).json('Invalid Id')
-      }
-      next()
-    } catch (e) {
-      next(e)
+    if (
+      Number.isNaN(numericId) ||
+      !Number.isInteger(numericId) ||
+      numericId <= 0
+    ) {
+      return res.status(400).json('Invalid Id')
     }
+    next()
   }
 }
 
 export function validateRequiredStrings(fields) {
   return (req, res, next) => {
+    if (req.body === null || typeof req.body !== 'object') {
+      return res.status(400).json({ error: 'Request body is required' })
+    }
     for (const field of fields) {
       if (
         typeof req.body[field] === 'undefined' ||
-        (typeof req.body[field] !== 'string' || req.body[field].trim() === '')
+        typeof req.body[field] !== 'string' ||
+        req.body[field].trim() === ''
       ) {
         return res.status(400).json({
           error: `${field} is required and must be a non-empty string`,
@@ -34,6 +34,9 @@ export function validateRequiredStrings(fields) {
 
 export function validateOptionalStrings(fields) {
   return (req, res, next) => {
+    if (req.body === null || typeof req.body !== 'object') {
+      return res.status(400).json({ error: 'Request body is required' })
+    }
     for (const field of fields) {
       if (
         typeof req.body[field] !== 'undefined' &&
@@ -50,6 +53,9 @@ export function validateOptionalStrings(fields) {
 
 export function validatePositiveInteger(fields) {
   return (req, res, next) => {
+    if (req.body === null || typeof req.body !== 'object') {
+      return res.status(400).json({ error: 'Request body is required' })
+    }
     for (const field of fields) {
       if (
         typeof req.body[field] === 'undefined' ||

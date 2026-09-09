@@ -5,31 +5,24 @@ import projectPhaseRouter from './routes/projectPhaseRoutes.js'
 import authRouter from './routes/authRoutes.js'
 import { authenticate } from './middleware/authMiddleware.js'
 
-// * application
-export const app = express() // express application obj
+export const app = express()
 
-// * configuration
 app.get('/', (req, res) => {
-  // '/' verifies the path and then executes the cb func , req and res are also obj
   res.send('hello world')
 })
 
-// ? middleware
 app.use('/', async (req, res, next) => {
-  // if i donot put '/' then also it would pass through it
   const logs = req.method + req.path + '\n'
   await writingLogs(logs)
-  next() // pass the error to the centralized error handling middleware
+  next()
 })
 
-app.use(express.json()) // used to prase the req.body
+app.use(express.json())
 
-// ? Express routes
 app.use('/auth', authRouter)
 app.use('/projects', authenticate, projectRouter)
 app.use('/', authenticate, projectPhaseRouter)
 
-// ? centralize error handling middleware => converts error into http response
 app.use((err, req, res, next) => {
   console.error(err)
   if (err.type === 'entity.parse.failed') {
@@ -41,5 +34,5 @@ app.use((err, req, res, next) => {
   if (err.code === '23514') {
     return res.status(400).json({ error: 'Invalid data' })
   }
-  res.status(500).json({ error: 'Internal Server Error', type: err.type })
+  res.status(500).json({ error: 'Internal Server Error' })
 })

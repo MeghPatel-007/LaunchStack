@@ -1,333 +1,224 @@
 # LaunchStack Progress
 
-## Current Phase
-EW02 — Express.js & REST API
+This document describes the repository as it exists, using current source, the database schema, and Git history. Roadmap language is not treated as implementation evidence.
 
-## Overall Status
-- Current phase: EW02
-- Current milestone: Request & Response — **Complete**
-- Next milestone: Controllers
-- Last checked: 2026-08-25
-- Current blocker: No blocking implementation issue. EW01 automated tests/documentation/final audit remain outstanding, while EW02 Controllers, Error Handling, and REST API Design are still pending.
+## EW01 — Node.js Foundation
 
-## Roadmap Progress
+### Complete
 
-### EW01 — Node.js Foundation & LaunchStack Setup
+- Backend package initialized as an ESM project.
+- `package.json` defines development/start scripts and the current dependencies.
+- Root `.env` loading is based on `import.meta.url`, `fileURLToPath()`, and module-relative paths.
+- `PORT` and database configuration are validated at startup.
+- Startup awaits log-directory initialization before calling `app.listen()`.
+- The logging utility uses promise-based filesystem operations and a path independent of `process.cwd()`.
+- The Express application and server startup were separated.
 
-| Area | Status | Evidence |
-|---|---|---|
-| Node.js Runtime | Verified | ESM backend modules execute successfully. |
-| npm | Verified | Backend manifest, lockfile, installed dependencies, and scripts exist. |
-| package.json | Verified | `backend/package.json` defines ESM, scripts, and dependencies. |
-| Environment Variables | Verified | Root `.env` is loaded through a CWD-independent module-relative path and `PORT` is consumed. |
-| File System (fs) | Verified | Promise-based `fs.access`/`fs.mkdir`, `ENOENT` handling, startup awaiting, and missing/existing directory behavior verified. |
-| Path Module | Verified | Logs and `.env` paths are now independent of the process working directory. |
-| Project Structure | Partial | Backend/frontend separation is established; README and frontend implementation remain incomplete. |
-| Git Workflow | Verified | Changes were reviewed, staged selectively, and implementation changes committed. |
+### Partial
 
-### EW02 — Express.js & REST API
+- The foundation is implemented, but the repository has no automated test suite.
+- The `npm test` script remains a failing placeholder.
 
-| Area | Status | Evidence |
-|---|---|---|
-| Express setup | Verified | Express application/server separation exists and the application is running successfully. |
-| Routing | Verified | Static routes, parameterized routes, `req.params`, route ordering, resource lookup, and 404 handling implemented. |
-| Middleware | Verified | Request logging middleware and `express.json()` middleware implemented and tested. |
-| Request/Response | Verified | `req.query`, `req.body`, `res.json()`, `res.status()`, 400 responses, and 404 responses implemented. |
-| Controllers | Not started | No controllers extracted yet. |
-| Error handling | Not started | No centralized application error-handling flow yet. |
-| REST API design | Not started | API design will be refined after controllers and error handling. |
+### Pending
 
-## Implementation Status
+- A real automated test command and repeatable test coverage.
+- Deployment-specific operational configuration.
 
-- [x] Node project initialized as an ESM backend
-- [x] Backend package manifest and lockfile configured
-- [x] dotenv loads the root `.env` file
-- [x] `PORT` validation rejects empty, decimal, non-numeric, and out-of-range `PORT` values
-- [x] Express root route implemented
-- [x] Logs-directory utility uses Promise-based filesystem APIs
-- [x] Await logs-directory setup before server startup
-- [x] Verify logs-directory behavior when missing and already present
-- [x] Verify startup fails when required logs initialization fails
-- [x] Remove working-directory dependence from configuration and logs paths
-- [x] Express application/server architecture implemented
-- [x] Static project routes implemented
-- [x] Parameterized `/projects/:id` route implemented
-- [x] Route order issue between `/projects/stats` and `/projects/:id` identified and fixed
-- [x] Missing project IDs return HTTP 404
-- [x] Request logging middleware implemented
-- [x] Middleware uses `next()` to continue the request pipeline
-- [x] Request logs written to daily log files
-- [x] `express.json()` middleware implemented
-- [x] Query parameters accessed through `req.query`
-- [x] Project filtering implemented using `?type=`
-- [x] Request body accessed through `req.body`
-- [x] Empty POST body detection implemented
-- [x] Empty POST body returns HTTP 400
-- [x] JSON responses implemented with `res.json()`
-- [ ] Controllers
-- [ ] Centralized error-handling middleware
-- [ ] REST API design refinement
-- [ ] Automated tests and a working `npm test` command
-- [ ] README/setup documentation
-- [ ] Final EW01 requirement audit
+## EW02 — Express.js & REST API
 
-## Startup Initialization
+### Complete
 
-Startup now follows this order:
+- Express application setup and server startup separation.
+- Request logging middleware and `express.json()` parsing.
+- Static and parameterized routes.
+- Route ordering for `/projects/stats` before `/projects/:id`.
+- Controllers extracted from the original route/application implementation.
+- Project CRUD, project filtering, project statistics, member operations, and phase routes are registered.
+- Validation middleware handles route IDs, required strings, optional strings, positive integers, and emails.
+- Central error middleware handles malformed JSON and selected PostgreSQL constraint codes.
 
-`textvalidatePortNumber()
-        ↓
-await ensureLogsDir()
-        ↓
-Express setup
-        ↓
-app.listen()`
+### Partial
 
-This ensures the server cannot begin listening before required logs-directory initialization succeeds.
+- Error response shapes and some user-facing messages remain inconsistent.
+- Manual/API verification exists, but automated route tests are not present.
 
-If `ensureLogsDir()` rejects, startup stops and `app.listen()` is never reached.
+### Pending
 
-## Filesystem Verification
+- A documented, repeatable API test suite.
+- Final deployment-facing API documentation and operational checks.
 
-### Missing logs directory
+## EW03 — Authentication & PostgreSQL
 
-Verified behavior:
+### Authentication: Complete
 
-`textLogs dir does not exist
-Making one ...
-Logs dir is made
-Server is running...`
+- Registration validates required fields and email format.
+- Passwords are hashed with bcrypt before insertion.
+- Login verifies the stored password hash.
+- Login signs a JWT containing `user_id` with a 24-hour expiry.
+- Authenticated routes use the `Authorization: Bearer <token>` header.
+- Authentication middleware verifies the token, validates the user ID claim, and confirms the user exists.
 
-Result: `backend/logs/` is created before the server starts.
+### Authentication: Partial
 
-### Existing logs directory
+- JWT secret configuration is required, but deployment secret management is not documented beyond environment configuration.
+- Automated authentication tests are absent.
 
-Verified behavior:
+### Authentication: Pending
 
-`textLogs dir exists
-Server is running...`
+- Production operational controls such as rate limiting and token revocation are not implemented or documented as current features.
 
-Result: Existing directory is handled successfully without unnecessary failure.
+### Authorization: Complete
 
-### Initialization failure
+- Project roles are `OWNER` and `MEMBER`.
+- Owner-only project operations are protected by authorization middleware.
+- Member-readable project operations are protected by membership checks.
+- Phase authorization resolves a phase to its project before checking project membership or ownership.
+- Shared database helpers provide `getProjectRole()` and `getProjectIdFromPhase()`.
+- Project and membership relationships are enforced by PostgreSQL foreign keys and uniqueness constraints.
 
-Verified by deliberate failure testing:
+### Authorization: Partial
 
-`textENOENT ...
-Node.js ...
-[nodemon] app crashed`
+- Authorization status/message consistency has been cleaned up, but response formats are not fully standardized.
+- Automated permission-matrix tests are absent.
 
-No server startup message appeared after the initialization failure.
+### Authorization: Pending
 
-Result: Required initialization failure correctly prevents server startup.
+- No additional authorization features are confirmed by the current repository.
 
-## Path Handling
+### PostgreSQL: Complete
 
-The previous paths were dependent on `process.cwd()`:
+- PostgreSQL schema exists for users, projects, project memberships, and phases.
+- `pg.Pool` is configured from environment variables.
+- Project CRUD and project statistics use parameterized SQL.
+- Phase CRUD uses PostgreSQL-backed state and timestamp data.
+- Transactions are used for project creation and ownership membership insertion.
+- Constraints enforce primary keys, foreign keys, unique email, unique project membership, valid roles, valid phase statuses, valid positions, and phase timestamp/state relationships.
 
-`textpath.resolve('./logs')
-path.resolve('./../.env')`
+### PostgreSQL: Partial
 
-These have been replaced with module-relative resolution based on:
+- Indexing was explored in Git history, but no broad production indexing strategy or query-plan report is documented as complete.
+- Database error translation covers selected codes, not a full operational error policy.
 
-`textimport.meta.url
-        ↓
-fileURLToPath()
-        ↓
-dirname()
-        ↓
-project-relative path`
+### PostgreSQL: Pending
 
-### Logs path
+- Deployment migrations/versioning are not present as a migration system.
+- Automated database integration tests are not present.
 
-`ensureLogsDir()` now resolves the intended `backend/logs` location from the module location and reuses the same resolved path for filesystem operations.
+## EW04 — Backend Completion
 
-The request logging utility writes daily log files under:
+### Complete
 
-`textbackend/logs/app-info-YYYY-MM-DD.log`
+- Shared request validation middleware was added and applied to current routes.
+- Numeric route IDs are validated before authorization/controller work.
+- Missing body checks return `400` for the relevant validation middleware.
+- Phase state validation is shared through `phaseValidation.js`.
+- Duplicate phase positions and duplicate registration emails use `409` in their known application checks.
+- Controller error forwarding uses Express `next` correctly.
+- Duplicate middleware continuation was removed.
+- Database port range validation was corrected.
+- Malformed JSON is mapped to `400` by the central error handler.
+- Selected PostgreSQL uniqueness/check errors are mapped centrally.
+- Obsolete prototype code and stale route/test comments were removed during cleanup.
 
-### Environment path
+### Partial
 
-`config.js` resolves the root `.env` file relative to the module location rather than the process working directory.
+- The backend is functionally implemented, but automated tests are still missing.
+- Error response payloads are not fully uniform.
+- Some internal cleanup and dependency review remain.
+- The current frontend state is not established as a completed MVP in the repository documentation.
 
-### CWD verification
+### Pending
 
-The application was tested from:
+- Replace the placeholder `npm test` command with real tests.
+- Complete deployment configuration and runbook documentation.
+- Decide whether the unused `cors` dependency should remain.
+- Finish public API documentation and operational review.
 
-1. `LaunchStack/backend`
-2. `LaunchStack`
+## Current Backend State
 
-The `process.cwd()` value changed between these runs, while `import.meta.url` remained tied to the actual module location.
+The active backend flow is:
 
-The logs directory continued to resolve to `backend/logs`, and the application started successfully.
+`server startup -> app middleware -> authentication -> route validation -> authorization -> controller -> PostgreSQL -> response`
+
+The active source is under `backend/src/`. The database definition is under `database/schema.sql`. Development data is generated by `backend/scripts/seed.js`.
+
+## Completed Features
+
+- Node.js ESM startup and configuration
+- CWD-independent `.env` and log paths
+- Express app/server separation
+- Request logging
+- JSON parsing
+- User registration/login
+- JWT authentication
+- Project CRUD
+- Project filtering by `type`
+- Project statistics
+- Project membership management
+- Project phase CRUD
+- Phase status, position, and timestamp validation
+- OWNER/MEMBER authorization
+- PostgreSQL integrity constraints
+
+## Features In Progress
+
+- EW04 documentation and final backend review
+- Consistent response/error presentation
+- Automated verification coverage
+- Deployment preparation
+
+## Pending Features
+
+Only items supported by the current repository are listed here:
+
+- Automated tests and a working test script
+- Deployment runbook and production configuration review
+- Frontend completion status and integration documentation
+- Migration/versioning workflow if PostgreSQL deployment requires one
+
+## Known Technical Debt
+
+- `npm test` is a placeholder that exits with an error.
+- `cors` is declared but not used in current source.
+- Error payloads mix strings and objects.
+- Some controller and middleware response messages use inconsistent wording.
+- The seed script is intentionally destructive for development and must not be used against production data.
+- Database constraint handling is selective rather than a complete error taxonomy.
+- Automated tests are absent.
+
+## Recent Refactors
+
+- `f8e91bd`: extracted project controllers from the application/routes implementation.
+- `fc40d6f`: centralized project authorization queries through `projectMembership.js` and added phase authorization middleware.
+- `72bebdb`: added shared validation middleware, phase validation utility, seed script, and cleanup-related changes.
+- The current cleanup also removed stale prototype implementations and corrected several error/status handling issues.
 
 ## Testing Status
 
-Tests present? **No**
+Automated tests are not present. `npm test` remains the default failing placeholder.
 
-Automated tests passing? **No — `npm test` remains the default failing placeholder.**
-
-Manual verification:
-
-- Valid `PORT` accepted.
-- Empty `PORT` rejected.
-- Decimal `PORT` rejected.
-- Non-numeric `PORT` rejected.
-- Zero rejected.
-- Out-of-range `PORT` rejected.
-- Missing logs directory created successfully.
-- Existing logs directory handled successfully.
-- Required initialization failure prevents server startup.
-- Startup works from the backend directory.
-- Startup works from the project root.
-- `.env` loading works independently of the current working directory.
-- Logs path remains independent of the current working directory.
-- `GET /projects` tested.
-- `GET /projects/:id` tested.
-- Existing project IDs return the correct project.
-- Unknown project IDs return HTTP 404.
-- `/projects/stats` tested.
-- Route ordering between `/projects/stats` and `/projects/:id` verified.
-- Request logging middleware tested.
-- `GET /projects?type=software` tested.
-- `GET /projects?type=hardware` tested.
-- `POST /projects` request body parsing tested.
-- Empty POST body returns HTTP 400.
-- JSON request body is accessible through `req.body`.
+Historical/manual verification recorded in the repository includes startup/path behavior, logging-directory initialization, route matching, project filtering, body parsing, and status responses. Those checks should not be described as a replacement for an automated suite.
 
 ## Documentation Status
 
-- README status: Empty
-- API documentation: None
-- Setup instructions: None
-- Architecture documentation: None
-- Progress tracker: This document is updated at the end of the day.
+- `README.md`: public setup and usage documentation.
+- `PROGRESS.md`: milestone and current-state tracking.
+- `MENTAL_MODEL.md`: connected conceptual model.
+- `LEARN.md`: concise personal learning notes.
+- `LEARNDETAIL.md`: detailed technical reference reconstructed from source and history.
 
-## Code Quality
+## Deployment Status
 
-- Startup ordering: **Verified** — required logs initialization is awaited before `app.listen()`.
-- Path handling: **Verified** — logs and `.env` paths no longer depend on the process working directory.
-- Filesystem errors: **Verified** — `ENOENT` is handled for directory creation; unexpected filesystem and mkdir errors are rethrown and prevent startup.
-- Initialization failure handling: **Verified** — server does not start when required initialization fails.
-- Express architecture: **Verified** — application and server responsibilities are separated.
-- Route ordering: **Verified** — specific `/projects/stats` route is registered before `/projects/:id`.
-- Middleware ordering: **Verified** — logging middleware and `express.json()` execute before the relevant route handlers.
-- Request logging: **Implemented** — request method and path are written to daily log files.
-- Request body parsing: **Implemented** — `express.json()` populates `req.body`.
-- HTTP status handling: **Implemented** — missing resources use 404 and invalid/empty POST requests use 400.
-- Unused dependency: `cors` is installed but not used; defer until it is actually required.
-- Abstraction level: Kept intentionally minimal; no unnecessary controllers/services/repositories/database layers introduced yet.
-- Git hygiene: Implementation changes should continue to be reviewed and committed separately from progress documentation.
+Not deployment-ready as a fully verified production release. The backend has a usable implementation and environment configuration, but automated tests, deployment procedures, secret management verification, and operational checks remain pending.
 
-## Concepts Learned
+## Git / Development State
 
-### EW01
+The history shows incremental implementation and checkpoints rather than a single rewrite:
 
-- Top-level `await` in ESM
-- Asynchronous application startup
-- Promise rejection and startup failure
-- `process.cwd()`
-- `import.meta.url`
-- `fileURLToPath()`
-- `path.dirname()`
-- CWD-independent filesystem paths
-- Reusing one resolved path for multiple filesystem operations
-- Git diff review and `git diff --check`
-- CRLF vs LF line endings and their effect on Git diffs
+`initial project -> Node/config/filesystem -> Express routes/middleware -> controllers -> PostgreSQL -> statistics -> phases -> membership/auth -> authorization refactor -> cleanup`
 
-### EW02
+The latest recorded commit is `72bebdb chore: checkpoint before backend cleanup`. Documentation updates in this working session are intentionally not committed.
 
-- Express application architecture
-- Express application vs HTTP server
-- Route matching
-- Static routes
-- Parameterized routes
-- Route parameters
-- `req.params`
-- Route order
-- Static vs parameterized route conflicts
-- Middleware
-- `app.use()`
-- `next()`
-- Middleware execution order
-- Asynchronous middleware
-- Request logging middleware
-- `express.json()`
-- `req.method`
-- `req.path`
-- `req.query`
-- Query parameters
-- `req.body`
-- JSON request bodies
-- `res.send()`
-- `res.json()`
-- `res.status()`
-- HTTP 400 Bad Request
-- HTTP 404 Not Found
-- Basic query-based filtering
-- Empty request-body handling
-- Request/response pipeline
+## Next Engineering Milestone
 
-## Current Assessment
-
-### Actually Done
-
-Node/ESM/npm setup, backend restructuring, dotenv configuration, `PORT` validation, Express application/server separation, Promise-based filesystem handling, awaited startup initialization, filesystem verification, initialization-failure verification, CWD-independent logs/configuration paths, Express routing, route parameters, route ordering, request logging middleware, JSON body parsing, query parameters, query filtering, basic POST request handling, and HTTP status handling.
-
-### Partially Done
-
-Project structure remains intentionally minimal because controllers, services, repositories, database layers, and other abstractions have not yet been justified.
-
-EW02 is partially complete.
-
-Completed:
-
-- Express Architecture
-- Routing
-- Middleware
-- Request/Response
-
-Remaining:
-
-- Controllers
-- Error Handling
-- REST API Design
-
-### Missing
-
-- Automated tests
-- Working `npm test`
-- README/setup documentation
-- Final EW01 audit against all original requirements
-- Controllers
-- Centralized error handling
-- Final REST API design refinement
-- Database persistence
-
-## Problems / Technical Debt
-
-- No automated test suite exists yet.
-- README is empty.
-- EW01 completion percentage should be recalculated against the actual full checklist.
-- POST `/projects` currently does not persist projects; it only demonstrates request-body handling.
-- POST request validation is currently minimal.
-- No centralized Express error-handling middleware exists.
-- `cors` is installed but unused; leave it alone until middleware requirements justify it.
-- Route handlers currently live directly inside `app.js`.
-- Hardcoded project data is temporary and will eventually be replaced by PostgreSQL.
-
-## Recommended Next Step
-
-Do **not** jump into PostgreSQL, WebSockets, authentication, load testing, or broad Express tutorials.
-
-The next milestone is:
-
-**EW02 → Controllers**
-
-Refactor the existing project route handlers into controller functions without introducing unnecessary services, repositories, or database abstractions.
-
-Use:
-
-**LEARN → IMPLEMENT → TEST → DEBUG → COMMIT → DOCUMENT**
-
-The refactor should preserve the current API behavior while making `app.js` responsible primarily for application configuration, middleware, and route registration.
+Complete the documentation/deployment review after adding a real automated test command and verifying the authentication, authorization, database-constraint, and malformed-input paths against the current API.

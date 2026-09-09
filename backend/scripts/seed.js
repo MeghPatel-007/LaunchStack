@@ -1,6 +1,9 @@
 import bcrypt from 'bcrypt'
 import pool from '../src/db/pool.js'
 async function seed() {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('The seed script cannot run in production')
+  }
   const client = await pool.connect()
   try {
     await client.query('begin')
@@ -12,7 +15,7 @@ async function seed() {
             users
             restart identity cascade;
         `
-    await client.query(truncateQuery) //? just to reset the development seed for testing
+    await client.query(truncateQuery)
     const details = {
       owner: {
         username: 'testOwner',
@@ -53,7 +56,6 @@ async function seed() {
         },
       },
     }
-    // * generate UserIds
     const ownerHashPassword = await bcrypt.hash(details.owner.password, 10)
     const ownerInsertQuery = `
         insert into users(username,email,password_hash)
@@ -87,7 +89,7 @@ async function seed() {
         values ($1,$2,$3)
         returning user_id;
     `
-    const nonMemberInsertQueryResult = await client.query(
+    await client.query(
       nonMemberInsertQuery,
       [
         details.nonmember.username,
@@ -96,13 +98,12 @@ async function seed() {
       ],
     )
 
-    // * Generate projectId
-    const projectInserQuery = `
+    const projectInsertQuery = `
         insert into projects(name,description,project_type,tech_stack)
         values ($1,$2,$3,$4)
         returning project_id;
     `
-    const projectInsertQueryResult = await client.query(projectInserQuery, [
+    const projectInsertQueryResult = await client.query(projectInsertQuery, [
       details.project.name,
       details.project.description,
       details.project.project_type,
@@ -110,7 +111,6 @@ async function seed() {
     ])
     const projectId = projectInsertQueryResult.rows[0].project_id
 
-    // * Generate Membershp Ids
     const projectMembersInsertQuery = `
         insert into project_members(user_id,project_id,role)
         values ($1,$2,'OWNER'),
@@ -123,7 +123,6 @@ async function seed() {
       memberId,
     ])
 
-    // * Generate Project Phases
     const currentTime = new Date().toISOString()
     const projectPhasesInsertQuery = `
         insert into project_phases(project_id,name,status,position,start_time,finished_time)
@@ -133,23 +132,23 @@ async function seed() {
         returning phase_id;
     `
     await client.query(projectPhasesInsertQuery, [
-      projectId, //1
-      details.project_phases.phase1.name, //2
-      details.project_phases.phase1.status, //3
-      details.project_phases.phase1.position, //4
-      details.project_phases.phase2.name, //5
-      details.project_phases.phase2.status, //6
-      details.project_phases.phase2.position, //7
-      currentTime, // 8
-      details.project_phases.phase3.name, //9
-      details.project_phases.phase3.status, //10
-      details.project_phases.phase3.position, //11
+      projectId,
+      details.project_phases.phase1.name,
+      details.project_phases.phase1.status,
+      details.project_phases.phase1.position,
+      details.project_phases.phase2.name,
+      details.project_phases.phase2.status,
+      details.project_phases.phase2.position,
+      currentTime,
+      details.project_phases.phase3.name,
+      details.project_phases.phase3.status,
+      details.project_phases.phase3.position,
     ])
-    console.log('Testing : Data is inserted into db')
     await client.query('commit')
   } catch (e) {
     await client.query('rollback')
     console.error(e.message)
+    throw e
   } finally {
     client.release()
     await pool.end()

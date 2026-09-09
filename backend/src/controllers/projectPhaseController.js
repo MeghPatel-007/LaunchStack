@@ -8,7 +8,7 @@
 import pool from '../db/pool.js'
 import { validatePhase } from '../utils/phaseValidation.js'
 
-export async function createPhase(req, res) {
+export async function createPhase(req, res, next) {
   const id = req.params.projectId
   const { name, description, status, position, start_time, finished_time } =
     req.body
@@ -59,14 +59,13 @@ export async function createPhase(req, res) {
     })
   } catch (e) {
     if (e.code == 'PHASE_VALIDATION') {
-      res.status(400).json({ error: e.message })
-    } else {
-      next(e)
+      return res.status(400).json({ error: e.message })
     }
+    next(e)
   }
 }
 
-export async function getPhases(req, res) {
+export async function getPhases(req, res, next) {
   const id = req.params.projectId
   try {
     const projectIdcheck = await pool.query(
@@ -92,7 +91,7 @@ export async function getPhases(req, res) {
   }
 }
 
-export async function getPhaseById(req, res) {
+export async function getPhaseById(req, res, next) {
   const id = req.params.id
   try {
     const query = `
@@ -110,7 +109,7 @@ export async function getPhaseById(req, res) {
   }
 }
 
-export async function putPhaseById(req, res) {
+export async function putPhaseById(req, res, next) {
   const id = req.params.id
   const { name, description, status, position, start_time, finished_time } =
     req.body
@@ -143,7 +142,7 @@ export async function putPhaseById(req, res) {
     )
     if (positionCheck.rowCount > 0) {
       return res
-        .status(400) // error status code
+        .status(409)
         .json({ error: 'Position is already used by another phase' })
     }
     validatePhase({ status, startTime, finishedTime })
@@ -174,14 +173,13 @@ export async function putPhaseById(req, res) {
     })
   } catch (e) {
     if (e.code == 'PHASE_VALIDATION') {
-      res.status(400).json({ error: e.message })
-    } else {
-      next(e)
+      return res.status(400).json({ error: e.message })
     }
+    next(e)
   }
 }
 
-export async function deletePhaseById(req, res) {
+export async function deletePhaseById(req, res, next) {
   const id = req.params.id
   try {
     const result = await pool.query(

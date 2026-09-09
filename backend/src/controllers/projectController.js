@@ -1,73 +1,6 @@
 import pool from '../db/pool.js'
-// ! never make circular dependencies
-// * experimental data
-// const data = {
-//   1: { name: 'Project1', id: 1, type: 'software' },
-//   2: { name: 'Project2', id: 2, type: 'hardware' },
-//   3: { name: 'Project3', id: 3, type: 'software' },
-// }
-// const dataStats = {
-//   1: { workDone: '10%', id: 1, type: 'software' },
-//   2: { workDone: '30%', id: 2, type: 'hardware' },
-//   3: { workDone: '100%', id: 3, type: 'software' },
-// }
 
-// * without db connection
-// export function getProjects(req, res) {
-// * http handler
-// * route handler
-//   const query = req.query //ex GET /projects?type=web%20app
-//   const filteredData =
-//     query.type === undefined
-//       ? data
-//       : Object.fromEntries(
-//           Object.entries(data).filter(([k, v]) => v.type === query.type),
-//         )
-//   res.json(filteredData)
-// }
-
-// export function getProjectById(req, res) {
-//   const id = req.params.id //ex GET /projects/1
-//   if (Object.hasOwn(data, id)) res.json(data[id])
-//   else {
-//     res.status(404).json({ error: 'Id does not exists' }) // http status code and msg
-//   }
-// }
-
-// export function createProject(req, res) {
-//   const response = req.body
-//   if (response != undefined && Object.keys(response).length !== 0) {
-//     res.json({ msg: 'Received new project' })
-//   } else {
-//     res.status(400).json({ error: 'New project cannot be received' })
-//   }
-// }
-
-// export function deleteProjectById(req, res) {
-//   const id = req.params.id
-//   if (Object.hasOwn(data, id)) {
-//     delete data[id]
-//     res.json(`Project ID ${id} is deleted successfully`)
-//   } else {
-//     res.status(404).json({ error: 'Id does not exists' })
-//   }
-//}
-
-// export function getProjectStats(req, res) {
-//   res.json(dataStats)
-// }
-
-// ? handles these request and responses
-// GET /projects
-// POST /projects
-// PUT /projects/:id
-// DELETE /projects/:id
-// GET /projects/stats
-// POST /project/:id/members
-// GET /project/:id/members
-// DELETE /project/:id/members
-
-export async function getProjects(req, res) {
+export async function getProjects(req, res, next) {
   const type = req.query.type
   const userId = req.user.user_id
   try {
@@ -102,7 +35,7 @@ export async function getProjects(req, res) {
   }
 }
 
-export async function createProject(req, res) {
+export async function createProject(req, res, next) {
   const { name, description, project_type, tech_stack } = req.body
   const userId = req.user.user_id
   const client = await pool.connect() // pool connected
@@ -140,7 +73,7 @@ export async function createProject(req, res) {
   }
 }
 
-export async function getProjectStats(req, res) {
+export async function getProjectStats(req, res, next) {
   const userId = req.user.user_id
   try {
     const query = `with phase_stats as (
@@ -180,7 +113,7 @@ export async function getProjectStats(req, res) {
   }
 }
 
-export async function getProjectById(req, res) {
+export async function getProjectById(req, res, next) {
   const id = req.params.id
   const userId = req.user.user_id
   try {
@@ -201,7 +134,7 @@ export async function getProjectById(req, res) {
   }
 }
 
-export async function putProjectById(req, res) {
+export async function putProjectById(req, res, next) {
   const id = req.params.id
   const { name, description, project_type, tech_stack } = req.body
   try {
@@ -223,7 +156,7 @@ export async function putProjectById(req, res) {
       tech_stack,
     ])
     if (updateResult.rowCount === 0) {
-      return res.status(404).json('Project doesnot exist')
+      return res.status(404).json('Project does not exist')
     }
     res.status(200).json({
       msg: 'Project updated successfully',
@@ -234,7 +167,7 @@ export async function putProjectById(req, res) {
   }
 }
 
-export async function deleteProjectById(req, res) {
+export async function deleteProjectById(req, res, next) {
   const id = req.params.id
   try {
     const result = await pool.query(
@@ -250,7 +183,7 @@ export async function deleteProjectById(req, res) {
   }
 }
 
-export async function addMemberbyId(req, res) {
+export async function addMemberbyId(req, res, next) {
   const projectId = req.params.id
   const userId = req.body.userId
   try {
@@ -279,7 +212,7 @@ export async function addMemberbyId(req, res) {
     `
     const result = await pool.query(query, [userId, projectId])
     res.status(200).json({
-      msg: 'User is add as a member',
+      msg: 'User is added as a member',
       userId: result.rows[0],
     })
   } catch (e) {
@@ -287,7 +220,7 @@ export async function addMemberbyId(req, res) {
   }
 }
 
-export async function getProjectMembers(req, res) {
+export async function getProjectMembers(req, res, next) {
   const id = req.params.id
   try {
     const query = `
@@ -314,7 +247,7 @@ export async function getProjectMembers(req, res) {
   }
 }
 
-export async function deleteMemberById(req, res) {
+export async function deleteMemberById(req, res, next) {
   const projectId = req.params.id
   const memberId = Number(req.params.userId)
   const ownerId = req.user.user_id

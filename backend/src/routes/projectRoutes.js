@@ -22,7 +22,6 @@ import {
 } from '../middleware/validation.js'
 
 const projectRouter = express.Router()
-// ! IMP : Route Order
 projectRouter.post(
   '/',
   validateRequiredStrings(['name', 'project_type']),
@@ -34,7 +33,6 @@ projectRouter.get('/', getProjects)
 
 projectRouter.get('/stats', getProjectStats)
 
-// * routes of ids or any parameter route should be at last
 projectRouter.get(
   '/:id',
   validateId('id'),
@@ -80,10 +78,4 @@ projectRouter.delete(
   requireProjectOwner,
   deleteMemberById,
 )
-// * just for testing purpose
-// app.get('/test-route', (req, res, next) => {
-//   const error = new Error('testing route')
-//   next(error)
-// })
-
 export default projectRouter
