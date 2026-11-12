@@ -146,18 +146,19 @@ The server listens at `http://localhost:3000` when `PORT=3000`.
 
 ## API
 
-Authenticated project and phase requests use:
+Authenticated project and phase requests use the `token` session cookie set by `POST /auth/login`:
 
 ```http
-Authorization: Bearer <jwt>
+Cookie: token=<jwt>
 ```
 
 ### Authentication
 
-| Method | Endpoint         | Purpose                             |
-| ------ | ---------------- | ----------------------------------- |
-| `POST` | `/auth/register` | Register a user                     |
-| `POST` | `/auth/login`    | Verify credentials and return a JWT |
+| Method | Endpoint     | Purpose                             |
+| ------ | ------------ | ----------------------------------- |
+| `POST` | `/auth/register` | Register a user                 |
+| `POST` | `/auth/login`    | Verify credentials and set the session cookie |
+| `GET`  | `/auth/me`       | Return the signed-in user's id  |
 
 ### Projects
 

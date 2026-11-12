@@ -55,7 +55,7 @@ This document describes the repository as it exists, using current source, the d
 - Passwords are hashed with bcrypt before insertion.
 - Login verifies the stored password hash.
 - Login signs a JWT containing `user_id` with a 24-hour expiry.
-- Authenticated routes use the `Authorization: Bearer <token>` header.
+- Authenticated routes read the `token` session cookie.
 - Authentication middleware verifies the token, validates the user ID claim, and confirms the user exists.
 
 ### Authentication: Partial

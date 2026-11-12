@@ -22,7 +22,7 @@ The database is the persistent model. `schema.sql` defines users, projects, memb
 
 Take `PUT /phases/:id` as an example:
 
-1. The client sends JSON and an `Authorization: Bearer <jwt>` header.
+1. The client sends JSON and the `token` session cookie.
 2. The logging middleware writes method and path information.
 3. `express.json()` parses the body.
 4. The root-mounted authenticated phase router runs `authenticate`.
@@ -88,7 +88,7 @@ The static `/projects/stats` route is registered before `/:id`. This was a real 
 
 Validation middleware is factory-style because each route can specify the field it needs. `validateId('id')` converts and checks a route parameter. Required strings reject missing, non-string, and whitespace-only values. Optional strings accept omission but reject non-string values. Positive integers are used for member IDs and phase positions. Email validation is used by both auth routes.
 
-`authenticate` reads the Authorization header, requires exactly a Bearer scheme and token shape, verifies the JWT, validates the positive integer `user_id`, checks the user row, and attaches the verified payload to `req.user`.
+`authenticate` reads the `token` cookie, verifies the JWT, validates the positive integer `user_id`, checks the user row, and attaches the verified user to `req.user`.
 
 Project authorization distinguishes project existence, membership, and ownership. Phase authorization has two paths: resolve a phase to its project for phase routes, or validate the project directly for project-phase collection routes.
 
