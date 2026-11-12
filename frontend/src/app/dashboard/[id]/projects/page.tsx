@@ -1,6 +1,5 @@
-import { PageHeader } from "@/components/launchstack/page-header"
-import { ProjectCard } from "@/components/launchstack/project-card"
-import { projects } from "@/data/launchstack"
+import { PageHeader } from '@/components/launchstack/page-header'
+import { ProjectsClient } from '@/components/launchstack/projects-client'
 
 export default async function ProjectsPage({
   params,
@@ -18,15 +17,7 @@ export default async function ProjectsPage({
         description="Every active and completed project in the workspace."
       />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {projects.map((project) => (
-          <ProjectCard
-            key={project.id}
-            project={project}
-            href={`${base}/projects/${project.id}`}
-          />
-        ))}
-      </div>
+      <ProjectsClient basePath={base} />
     </div>
   )
 }
