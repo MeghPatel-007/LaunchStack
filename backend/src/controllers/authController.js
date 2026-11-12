@@ -39,7 +39,7 @@ export async function registration(req, res, next) {
     const result = await pool.query(query, [username, validEmail, passwordHash])
     res.status(200).json({
       msg: 'User is created successfully',
-      userId: result.rows[0],
+      userId: result.rows[0].user_id,
     })
   } catch (e) {
     next(e)
@@ -80,17 +80,24 @@ export async function login(req, res, next) {
     const token = jwt.sign(payload, secret, options)
     res.cookie('token', token, {
       httpOnly: true,
-      // secure: process.env.NODE_ENV === 'production',
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 24 * 60 * 60 * 1000,
       path: '/',
+      // Shared parent domain so the Next.js proxy can read it in production.
+      domain: process.env.COOKIE_DOMAIN || undefined,
     })
     res.status(200).json({
       msg: 'User can login successfully',
-      token: token,
       userId: result.rows[0].user_id,
     })
   } catch (e) {
     next(e)
   }
+}
+
+export async function getCurrentUser(req, res, next) {
+  return res.status(200).json({
+    userId: req.user.user_id,
+  })
 }
