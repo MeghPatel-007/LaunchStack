@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
-import { handleSignup } from '@/services/authService'
+import { handleSignup } from '@/lib/services/authService'
 
 export function SignupForm({
   className,

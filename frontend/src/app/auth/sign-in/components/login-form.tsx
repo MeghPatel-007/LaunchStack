@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { handleLogin } from '@/services/authService'
+import { handleLogin } from '@/lib/services/authService'
 
 export function LoginForm({
   className,
