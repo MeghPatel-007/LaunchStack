@@ -1,4 +1,6 @@
 import express from 'express'
+import cookieParser from 'cookie-parser'
+import cors from 'cors'
 import { writingLogs } from './utils/ensureLogsDir.js'
 import projectRouter from './routes/projectRoutes.js'
 import projectPhaseRouter from './routes/projectPhaseRoutes.js'
@@ -7,9 +9,9 @@ import { authenticate } from './middleware/authMiddleware.js'
 
 export const app = express()
 
-app.get('/', (req, res) => {
-  res.send('hello world')
-})
+// app.get('/', (req, res) => {
+//   res.send('hello world')
+// })
 
 app.use('/', async (req, res, next) => {
   const logs = req.method + req.path + '\n'
@@ -17,7 +19,14 @@ app.use('/', async (req, res, next) => {
   next()
 })
 
+app.use(
+  cors({
+    origin: `http://localhost:${process.env.FRONTEND_PORT}`,
+    credentials: true,
+  }),
+)
 app.use(express.json())
+app.use(cookieParser())
 
 app.use('/auth', authRouter)
 app.use('/projects', authenticate, projectRouter)
