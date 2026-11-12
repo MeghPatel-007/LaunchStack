@@ -64,9 +64,12 @@ export default function TaskPage() {
     <>
       {/* Page Header */}
       <div className="flex flex-col gap-2 px-4 md:px-6">
-        <h1 className="text-2xl font-bold tracking-tight">Tasks</h1>
+        <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+          Workspace
+        </p>
+        <h1 className="text-2xl font-bold tracking-tight">My work</h1>
         <p className="text-muted-foreground">
-          A powerful task and issue tracker built with Tanstack Table.
+          Tasks assigned to you across every active project.
         </p>
       </div>
 
@@ -74,9 +77,9 @@ export default function TaskPage() {
       <div className="md:hidden px-4 md:px-6">
         <div className="flex items-center justify-center h-96 border rounded-lg bg-muted/20">
           <div className="text-center p-8">
-            <h3 className="text-lg font-semibold mb-2">Tasks Dashboard</h3>
+            <h3 className="text-lg font-semibold mb-2">My work</h3>
             <p className="text-muted-foreground">
-              Please use a larger screen to view the full tasks interface.
+              Please use a larger screen to view the full task table.
             </p>
           </div>
         </div>
