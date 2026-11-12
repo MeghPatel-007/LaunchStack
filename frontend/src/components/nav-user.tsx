@@ -1,15 +1,15 @@
 "use client"
 
 import {
-  CreditCard,
-  EllipsisVertical,
-  LogOut,
   BellDot,
   CircleUser,
+  EllipsisVertical,
+  LogOut,
+  Palette,
 } from "lucide-react"
 import Link from "next/link"
 
-import { Logo } from "@/components/logo"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,15 +25,18 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { initials } from "@/data/launchstack"
 
 export function NavUser({
   user,
+  base,
 }: {
   user: {
     name: string
     email: string
     avatar: string
   }
+  base: string
 }) {
   const { isMobile } = useSidebar()
 
@@ -49,9 +52,11 @@ export function NavUser({
               />
             }
           >
-            <div className="flex size-8 items-center justify-center rounded-lg">
-              <Logo size={28} className="size-7!" />
-            </div>
+            <Avatar className="size-8 rounded-lg">
+              <AvatarFallback className="rounded-lg">
+                {initials(user.name)}
+              </AvatarFallback>
+            </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
               <span className="truncate font-medium">{user.name}</span>
               <span className="text-muted-foreground truncate text-xs">
@@ -69,9 +74,11 @@ export function NavUser({
             <DropdownMenuGroup>
               <DropdownMenuLabel className="p-0 font-normal text-foreground">
                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                  <div className="size-8 rounded-lg">
-                    <Logo size={28} />
-                  </div>
+                  <Avatar className="size-8 rounded-lg">
+                    <AvatarFallback className="rounded-lg">
+                      {initials(user.name)}
+                    </AvatarFallback>
+                  </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-medium">{user.name}</span>
                     <span className="text-muted-foreground truncate text-xs">
@@ -85,21 +92,21 @@ export function NavUser({
             <DropdownMenuGroup>
               <DropdownMenuItem
                 className="cursor-pointer"
-                render={<Link href="/settings/account" />}
+                render={<Link href={`${base}/settings/account`} />}
               >
                 <CircleUser />
                 Account
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="cursor-pointer"
-                render={<Link href="/settings/billing" />}
+                render={<Link href={`${base}/settings/appearance`} />}
               >
-                <CreditCard />
-                Billing
+                <Palette />
+                Appearance
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="cursor-pointer"
-                render={<Link href="/settings/notifications" />}
+                render={<Link href={`${base}/settings/notifications`} />}
               >
                 <BellDot />
                 Notifications
@@ -109,7 +116,7 @@ export function NavUser({
             <DropdownMenuGroup>
               <DropdownMenuItem
                 className="cursor-pointer"
-                render={<Link href="/sign-in" />}
+                render={<Link href="/auth/sign-in" />}
               >
                 <LogOut />
                 Log out

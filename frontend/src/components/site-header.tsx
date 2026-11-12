@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { CommandSearch, SearchTrigger } from "@/components/command-search"
@@ -31,51 +30,10 @@ export function SiteHeader() {
             orientation="vertical"
             className="mx-2 data-vertical:self-center data-vertical:h-4"
           />
-          <div className="flex-1 max-w-sm">
+          <div className="max-w-sm flex-1">
             <SearchTrigger onClick={() => setSearchOpen(true)} />
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="hidden sm:flex"
-              nativeButton={false}
-              render={
-                <a
-                  href="https://shadcnstore.com/blocks"
-                  rel="noopener noreferrer"
-                  target="_blank"
-                />
-              }
-            >
-              Blocks
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="hidden sm:flex"
-              nativeButton={false}
-              render={
-                <a href="/landing" rel="noopener noreferrer" target="_blank" />
-              }
-            >
-              Landing Page
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="hidden sm:flex"
-              nativeButton={false}
-              render={
-                <a
-                  href="https://github.com/shadcnstore/shadcn-dashboard-landing-template"
-                  rel="noopener noreferrer"
-                  target="_blank"
-                />
-              }
-            >
-              GitHub
-            </Button>
             <ModeToggle />
           </div>
         </div>
