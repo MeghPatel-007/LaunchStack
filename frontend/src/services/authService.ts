@@ -1,14 +1,18 @@
-import { useRouter } from 'next/navigation'
+import type { useRouter } from 'next/navigation'
 import { toast } from '@/components/ui/toast'
-import { useState } from 'react'
+import { API_URL } from '@/lib/config'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
+type Router = ReturnType<typeof useRouter>
 
-const router = useRouter()
-export const [isSubmitting, setIsSubmitting] = useState(false)
-export const [passwordMismatch, setPasswordMismatch] = useState(false)
+type SignupState = {
+  setIsSubmitting: (value: boolean) => void
+  setPasswordMismatch: (value: boolean) => void
+}
 
-export const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+export const handleLogin = async (
+  e: React.FormEvent<HTMLFormElement>,
+  router: Router,
+) => {
   e.preventDefault()
   const formData = new FormData(e.currentTarget)
   const email = formData.get('email') as string
@@ -55,7 +59,11 @@ export const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
   }
 }
 
-export const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
+export const handleSignup = async (
+  e: React.FormEvent<HTMLFormElement>,
+  router: Router,
+  { setIsSubmitting, setPasswordMismatch }: SignupState,
+) => {
   e.preventDefault()
   const formData = new FormData(e.currentTarget)
   const username = (formData.get('username') as string).trim()

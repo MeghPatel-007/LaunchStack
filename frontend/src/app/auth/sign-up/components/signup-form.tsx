@@ -1,6 +1,8 @@
 'use client'
 
 import { cn } from '@/lib/utils'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Field,
   FieldError,
@@ -10,22 +12,23 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
-import {
-  handleSignup,
-  isSubmitting,
-  passwordMismatch,
-  setPasswordMismatch,
-} from '@/services/authService'
+import { handleSignup } from '@/services/authService'
 
 export function SignupForm({
   className,
   ...props
 }: React.ComponentProps<'form'>) {
+  const router = useRouter()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [passwordMismatch, setPasswordMismatch] = useState(false)
+
   return (
     <form
       className={cn('flex flex-col gap-6', className)}
       {...props}
-      onSubmit={handleSignup}
+      onSubmit={(e) =>
+        handleSignup(e, router, { setIsSubmitting, setPasswordMismatch })
+      }
     >
       <div className="flex flex-col items-center gap-2 text-center">
         <h1 className="text-2xl font-bold">Create your account</h1>

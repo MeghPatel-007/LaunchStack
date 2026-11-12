@@ -1,6 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
+import { useRouter } from 'next/navigation'
 
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Button } from '@/components/ui/button'
@@ -11,11 +12,13 @@ export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<'form'>) {
+  const router = useRouter()
+
   return (
     <form
       className={cn('flex flex-col gap-6', className)}
       {...props}
-      onSubmit={handleLogin}
+      onSubmit={(e) => handleLogin(e, router)}
     >
       <div className="flex flex-col items-center gap-2 text-center">
         <h1 className="text-2xl font-bold">Login to your account</h1>
