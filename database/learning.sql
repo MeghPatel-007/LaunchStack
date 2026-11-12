@@ -328,3 +328,15 @@ on p.project_id = pm.project_id
 where pm.user_id = 3 and p.project_id = 1;
 
 select * from project_phases;
+select * from users;
+select * from projects;
+select * from project_members;
+
+TRUNCATE TABLE
+    project_phases,
+    project_members,
+    projects,
+    users
+RESTART IDENTITY CASCADE;
+
+select * from users;
