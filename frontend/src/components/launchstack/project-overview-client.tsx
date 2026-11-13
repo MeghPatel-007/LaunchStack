@@ -17,6 +17,9 @@ import { Layers, CircleDashed, LoaderCircle, CheckCircle2 } from 'lucide-react'
 import { StatCard } from '@/components/launchstack/stat-card'
 import { Progress } from '@/components/ui/progress'
 
+import { PhaseModal } from '@/components/launchstack/phase-modal'
+import type { CreatePhaseInput, UpdatePhaseInput } from '@/types/phase'
+
 interface ProjectOverviewClientProps {
   projectId: number
 }
@@ -34,7 +37,103 @@ export function ProjectOverviewClient({
   const [data, setData] = useState<ProjectOverviewData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
 
+  const handleAddPhase = async (phaseData: CreatePhaseInput) => {
+    const result = await phaseServices.create(projectId, phaseData)
+
+    setData((prev) => {
+      if (!prev) return prev
+
+      return {
+        ...prev,
+        phases: [...prev.phases, result.phase].sort(
+          (a, b) => a.position - b.position,
+        ),
+      }
+    })
+  }
+  const handleUpdatePhase = async (
+    phaseId: number,
+    phaseData: UpdatePhaseInput,
+  ) => {
+    const result = await phaseServices.update(phaseId, phaseData)
+
+    setData((prev) => {
+      if (!prev) return prev
+
+      return {
+        ...prev,
+        phases: prev.phases
+          .map((phase) => (phase.phase_id === phaseId ? result.phase : phase))
+          .sort((a, b) => a.position - b.position),
+      }
+    })
+  }
+  const handleDeletePhase = async (phaseId: number) => {
+    setActionError(null)
+
+    // Throws on failure, so the phase stays in state and the dialog shows the error.
+    await phaseServices.delete(phaseId)
+
+    setData((prev) => {
+      if (!prev) return prev
+
+      return {
+        ...prev,
+        phases: prev.phases.filter((phase) => phase.phase_id !== phaseId),
+      }
+    })
+
+    try {
+      const allStats = await projectServices.getStats()
+      const stats =
+        allStats.find((item) => item.project_id === projectId) ?? null
+
+      setData((prev) => (prev ? { ...prev, stats } : prev))
+    } catch {
+      // The delete already succeeded; never restore the phase over a stats failure.
+      setActionError(
+        'Phase deleted, but project statistics could not be refreshed.',
+      )
+    }
+  }
+  const handleAddMember = async (userId: number) => {
+    await projectServices.addMember(projectId, { userId })
+
+    const updatedMembers = await projectServices.getMembers(projectId)
+
+    setData((prev) =>
+      prev
+        ? {
+            ...prev,
+            members: updatedMembers,
+          }
+        : prev,
+    )
+  }
+  const handleRemoveMember = async (userId: number) => {
+    setActionError(null)
+
+    try {
+      await projectServices.deleteMember(projectId, userId)
+
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              members: prev.members.filter(
+                (member) => member.user_id !== userId,
+              ),
+            }
+          : prev,
+      )
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : 'Failed to remove member.',
+      )
+    }
+  }
   useEffect(() => {
     let isMounted = true
 
@@ -186,14 +285,37 @@ export function ProjectOverviewClient({
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>Phases</CardTitle>
-          <p className="text-muted-foreground text-sm">
-            The larger stages this project moves through.
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <CardTitle>Phases</CardTitle>
+              <p className="text-muted-foreground text-sm">
+                The larger stages this project moves through.
+              </p>
+            </div>
+
+            <PhaseModal
+              onAddPhase={handleAddPhase}
+              nextPosition={
+                phases.length > 0
+                  ? Math.max(...phases.map((phase) => phase.position)) + 1
+                  : 1
+              }
+            />
+          </div>
         </CardHeader>
 
         <CardContent>
-          <PhaseList items={phases} />
+          {actionError && (
+            <p role="alert" className="text-destructive mb-4 text-sm">
+              {actionError}
+            </p>
+          )}
+
+          <PhaseList
+            items={phases}
+            onEditPhase={handleUpdatePhase}
+            onDeletePhase={handleDeletePhase}
+          />
         </CardContent>
       </Card>
 
@@ -207,7 +329,7 @@ export function ProjectOverviewClient({
           </CardHeader>
 
           <CardContent>
-            <MemberList members={members} />
+            <MemberList members={members} onRemoveMember={handleRemoveMember} />
           </CardContent>
         </Card>
 
