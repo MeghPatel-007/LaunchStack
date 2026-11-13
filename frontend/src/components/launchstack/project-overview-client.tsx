@@ -1,4 +1,3 @@
-
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -10,9 +9,13 @@ import { MemberList } from '@/components/launchstack/member-list'
 import { projectServices } from '@/lib/services/projectService'
 import { phaseServices } from '@/lib/services/projectPhaseService'
 
-import type { Project } from '@/types/project'
+import type { Project, ProjectStats } from '@/types/project'
 import type { ProjectMember } from '@/types/projectMember'
 import type { Phase } from '@/types/phase'
+
+import { Layers, CircleDashed, LoaderCircle, CheckCircle2 } from 'lucide-react'
+import { StatCard } from '@/components/launchstack/stat-card'
+import { Progress } from '@/components/ui/progress'
 
 interface ProjectOverviewClientProps {
   projectId: number
@@ -22,6 +25,7 @@ interface ProjectOverviewData {
   project: Project
   phases: Phase[]
   members: ProjectMember[]
+  stats: ProjectStats | null
 }
 
 export function ProjectOverviewClient({
@@ -39,17 +43,22 @@ export function ProjectOverviewClient({
         setIsLoading(true)
         setError(null)
 
-        const [project, phases, members] = await Promise.all([
+        const [project, phases, members, allStats] = await Promise.all([
           projectServices.getById(projectId),
           phaseServices.getAll(projectId),
           projectServices.getMembers(projectId),
+          projectServices.getStats(),
         ])
+
+        const stats =
+          allStats.find((item) => item.project_id === projectId) ?? null
 
         if (isMounted) {
           setData({
             project,
             phases,
             members,
+            stats,
           })
         }
       } catch (error) {
@@ -98,7 +107,7 @@ export function ProjectOverviewClient({
     )
   }
 
-  const { project, phases, members } = data
+  const { project, phases, members, stats } = data
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 md:px-6">
@@ -129,7 +138,52 @@ export function ProjectOverviewClient({
           </div>
         </CardContent>
       </Card>
+      {/* Project statistics */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Project statistics</CardTitle>
+          <p className="text-muted-foreground text-sm">
+            Current progress across all project phases.
+          </p>
+        </CardHeader>
 
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <StatCard
+              label="Total phases"
+              value={stats?.total_phases ?? 0}
+              icon={Layers}
+            />
+
+            <StatCard
+              label="Not started"
+              value={stats?.not_started_phases ?? 0}
+              icon={CircleDashed}
+            />
+
+            <StatCard
+              label="In progress"
+              value={stats?.in_progress_phases ?? 0}
+              icon={LoaderCircle}
+            />
+
+            <StatCard
+              label="Completed"
+              value={stats?.completed_phases ?? 0}
+              icon={CheckCircle2}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Phase completion</span>
+              <span className="font-medium">{stats?.work_done ?? 0}%</span>
+            </div>
+
+            <Progress value={stats?.work_done ?? 0} />
+          </div>
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader>
           <CardTitle>Phases</CardTitle>
@@ -161,8 +215,8 @@ export function ProjectOverviewClient({
           <CardHeader>
             <CardTitle>Recent activity</CardTitle>
             <p className="text-muted-foreground text-sm">
-              Activity tracking will be connected after the backend endpoint
-              is implemented.
+              Activity tracking will be connected after the backend endpoint is
+              implemented.
             </p>
           </CardHeader>
 
