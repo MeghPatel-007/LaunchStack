@@ -5,7 +5,11 @@ import { useEffect, useState } from 'react'
 import { ProjectCard } from '@/components/launchstack/project-card'
 import { AddProjectModal } from '@/components/launchstack/add-project-modal'
 import { projectServices } from '@/lib/services/projectService'
-import type { Project, CreateProjectInput } from '@/types/project'
+import type {
+  Project,
+  CreateProjectInput,
+  UpdateProjectInput,
+} from '@/types/project'
 
 interface ProjectsClientProps {
   basePath: string
@@ -15,7 +19,7 @@ export function ProjectsClient({ basePath }: ProjectsClientProps) {
   const [projects, setProjects] = useState<Project[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
+  const [actionError, setActionError] = useState<string | null>(null)
   // Fetch projects when the component mounts.
   useEffect(() => {
     const fetchProjects = async () => {
@@ -43,7 +47,30 @@ export function ProjectsClient({ basePath }: ProjectsClientProps) {
     const updatedProjects = await projectServices.getAll()
     setProjects(updatedProjects)
   }
+  // update project
+  const handleUpdateProject = async (
+    projectId: number,
+    data: UpdateProjectInput,
+  ) => {
+    await projectServices.update(projectId, data)
 
+    const updatedProjects = await projectServices.getAll()
+    setProjects(updatedProjects)
+  }
+  const handleDeleteProject = async (projectId: number) => {
+    try {
+      setActionError(null)
+
+      await projectServices.delete(projectId)
+
+      const updatedProjects = await projectServices.getAll()
+      setProjects(updatedProjects)
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : 'Failed to delete project.',
+      )
+    }
+  }
   if (isLoading) {
     return <p className="text-muted-foreground">Loading projects...</p>
   }
@@ -69,8 +96,15 @@ export function ProjectsClient({ basePath }: ProjectsClientProps) {
               key={project.project_id}
               project={project}
               href={`${basePath}/projects/${project.project_id}`}
+              onUpdateProject={handleUpdateProject}
+              onDeleteProject={handleDeleteProject}
             />
           ))}
+          {actionError && (
+            <p role="alert" className="text-sm text-destructive">
+              {actionError}
+            </p>
+          )}
         </div>
       )}
     </div>
