@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import type { FormEvent, ReactElement } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, Pencil } from 'lucide-react'
 import { z } from 'zod'
 
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
@@ -26,7 +26,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-import type { CreateProjectInput, ProjectType } from '@/types/project'
+import type {
+  Project,
+  CreateProjectInput,
+  UpdateProjectInput,
+  ProjectType,
+} from '@/types/project'
 
 const projectTypes = [
   { value: 'web', label: 'Web application' },
@@ -46,14 +51,16 @@ const techStacks = [
 const projectFormSchema = z.object({
   name: z.string().trim().min(1, 'Name is required'),
   description: z.string().optional(),
-  projectType: z.string().min(1, 'Select a project type'),
+  projectType: z.enum(['web', 'mobile', 'api', 'design']),
   techStack: z.string().min(1, 'Select a tech stack'),
 })
 
 type ProjectFormData = z.infer<typeof projectFormSchema>
 
 interface AddProjectModalProps {
-  onAddProject: (data: CreateProjectInput) => Promise<void>
+  onAddProject?: (data: CreateProjectInput) => Promise<void>
+  onUpdateProject?: (data: UpdateProjectInput) => Promise<void>
+  project?: Project
   trigger?: ReactElement
 }
 
@@ -66,13 +73,37 @@ const initialFormData: ProjectFormData = {
 
 export function AddProjectModal({
   onAddProject,
+  onUpdateProject,
+  project,
   trigger,
 }: AddProjectModalProps) {
+  const isEditing = Boolean(project)
+
   const [open, setOpen] = useState(false)
   const [formData, setFormData] = useState<ProjectFormData>(initialFormData)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitError, setSubmitError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Sync form fields when the dialog opens, without an effect.
+  const [wasOpen, setWasOpen] = useState(false)
+  if (open !== wasOpen) {
+    setWasOpen(open)
+    if (open) {
+      setFormData(
+        project
+          ? {
+              name: project.name,
+              description: project.description ?? '',
+              projectType: project.project_type as ProjectType,
+              techStack: project.tech_stack ?? '',
+            }
+          : { ...initialFormData },
+      )
+      setErrors({})
+      setSubmitError('')
+    }
+  }
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -99,7 +130,7 @@ export function AddProjectModal({
       return
     }
 
-    const payload: CreateProjectInput = {
+    const payload = {
       name: result.data.name,
       description: result.data.description?.trim() || null,
       project_type: result.data.projectType as ProjectType,
@@ -109,19 +140,31 @@ export function AddProjectModal({
     try {
       setIsSubmitting(true)
 
-      await onAddProject(payload)
+      if (project) {
+        if (!onUpdateProject) {
+          throw new Error('Update handler is not configured.')
+        }
+
+        await onUpdateProject(payload)
+      } else {
+        if (!onAddProject) {
+          throw new Error('Create handler is not configured.')
+        }
+
+        await onAddProject(payload)
+      }
 
       setFormData({ ...initialFormData })
       setErrors({})
       setSubmitError('')
       setOpen(false)
     } catch (error) {
-      console.error('Failed to create project:', error)
+      console.error('Failed to save project:', error)
 
       setSubmitError(
         error instanceof Error
           ? error.message
-          : 'Something went wrong while creating the project.',
+          : 'Something went wrong while saving the project.',
       )
     } finally {
       setIsSubmitting(false)
@@ -143,12 +186,6 @@ export function AddProjectModal({
       onOpenChange={(nextOpen) => {
         if (isSubmitting) return
         setOpen(nextOpen)
-
-        if (!nextOpen) {
-          setFormData({ ...initialFormData })
-          setErrors({})
-          setSubmitError('')
-        }
       }}
     >
       {trigger ? (
@@ -166,9 +203,14 @@ export function AddProjectModal({
 
       <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
-          <DialogTitle>Create New Project</DialogTitle>
+          <DialogTitle>
+            {isEditing ? 'Edit Project' : 'Create New Project'}
+          </DialogTitle>
+
           <DialogDescription>
-            Start a new project to organize work and track progress.
+            {isEditing
+              ? 'Update your project details.'
+              : 'Start a new project to organize work and track progress.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -223,7 +265,7 @@ export function AddProjectModal({
                   if (value) {
                     setFormData((prev) => ({
                       ...prev,
-                      projectType: value,
+                      projectType: value as ProjectType,
                     }))
                   }
                 }}
@@ -302,8 +344,19 @@ export function AddProjectModal({
               disabled={isSubmitting}
               className="cursor-pointer"
             >
-              <Plus data-icon="inline-start" />
-              {isSubmitting ? 'Creating...' : 'Create Project'}
+              {isEditing ? (
+                <Pencil data-icon="inline-start" />
+              ) : (
+                <Plus data-icon="inline-start" />
+              )}
+
+              {isSubmitting
+                ? isEditing
+                  ? 'Updating...'
+                  : 'Creating...'
+                : isEditing
+                  ? 'Update Project'
+                  : 'Create Project'}
             </Button>
           </div>
         </form>
