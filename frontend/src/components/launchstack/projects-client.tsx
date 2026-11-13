@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 
 import { ProjectCard } from '@/components/launchstack/project-card'
-import { AddProjectModal } from '@/components/launchstack/add-project-modal'
+import { AddProjectModal } from '@/components/launchstack/project-modal'
 import { projectServices } from '@/lib/services/projectService'
 import type {
   Project,

@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 
-import { AddProjectModal } from '@/components/launchstack/add-project-modal'
+import { AddProjectModal } from '@/components/launchstack/project-modal'
 
 import type { Project as ApiProject, UpdateProjectInput } from '@/types/project'
 import type { Project as MockProject } from '@/data/launchstack'
