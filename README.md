@@ -10,8 +10,9 @@ It exists to make project progress easier to structure and inspect. The current 
 
 Implemented backend capabilities:
 
-- User registration and login
+- User registration, login, and logout
 - bcrypt password hashing and JWT authentication
+- Helmet security headers and an origin allowlist for CORS
 - Project creation, listing, filtering, reading, updating, and deletion
 - Project membership and OWNER/MEMBER roles
 - Project member listing, addition, and removal
@@ -42,6 +43,8 @@ There are no service or repository layers in the current implementation.
 - `pg`
 - `bcrypt`
 - `jsonwebtoken`
+- `helmet`
+- `cors`
 - `dotenv`
 - `nodemon` for development
 
@@ -103,9 +106,13 @@ DB_NAME=database_name
 DB_USER=database_username
 DB_PASSWORD=database_password
 JWT_SECRET=replace-with-a-secret-value
+ALLOWED_FRONTEND_ORIGINS=http://localhost:3000
+COOKIE_DOMAIN=
 ```
 
 Use a long, private JWT secret outside development.
+
+`ALLOWED_FRONTEND_ORIGINS` is required. The backend refuses to start when it is missing or empty. It accepts a comma-separated list of origins. `COOKIE_DOMAIN` stays empty on localhost and is set to a shared parent domain only when the frontend and backend run on different subdomains.
 
 ### Create the PostgreSQL schema
 
@@ -158,6 +165,7 @@ Cookie: token=<jwt>
 | ------ | ------------ | ----------------------------------- |
 | `POST` | `/auth/register` | Register a user                 |
 | `POST` | `/auth/login`    | Verify credentials and set the session cookie |
+| `POST` | `/auth/logout`   | Clear the session cookie        |
 | `GET`  | `/auth/me`       | Return the signed-in user's id  |
 
 ### Projects
@@ -191,9 +199,18 @@ All phase endpoints require authentication and project membership/ownership as a
 
 ## Authentication and authorization
 
-Registration stores a bcrypt hash rather than a plaintext password. Login compares the supplied password with the stored hash and signs a JWT containing the user ID. Authenticated requests verify the JWT and confirm that the user still exists.
+Registration stores a bcrypt hash rather than a plaintext password. Login compares the supplied password with the stored hash and signs a JWT containing the user ID. Authenticated requests verify the JWT and confirm that the user still exists. Logout clears the `token` cookie with the same cookie options used to set it.
 
 Authentication answers who the caller is. Authorization checks whether that authenticated user is a project member or owner. Phase authorization first resolves the phase's project and then checks membership or ownership on that project.
+
+## Frontend integration
+
+The Next.js app calls the Express API through `frontend/src/lib/api/apiClient.ts`. That client sends credentials, serializes JSON bodies, and converts non-2xx responses into errors carrying the server message.
+
+- `frontend/src/lib/services/authService.ts` holds the login, signup, and logout handlers. Each handler validates the form, calls `apiClient`, shows a toast, and redirects.
+- `frontend/src/types/auth.ts` holds the shared auth request, response, and form-state types.
+- `frontend/src/types/project.ts` and `frontend/src/types/phase.ts` hold the project and phase types used by their services.
+
 
 ## Status
 

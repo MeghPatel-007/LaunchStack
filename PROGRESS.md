@@ -131,7 +131,6 @@ This document describes the repository as it exists, using current source, the d
 
 - Replace the placeholder `npm test` command with real tests.
 - Complete deployment configuration and runbook documentation.
-- Decide whether the unused `cors` dependency should remain.
 - Finish public API documentation and operational review.
 
 ## Current Backend State
@@ -150,6 +149,7 @@ The active source is under `backend/src/`. The database definition is under `dat
 - Request logging
 - JSON parsing
 - User registration/login
+- Session logout
 - JWT authentication
 - Project CRUD
 - Project filtering by `type`
@@ -179,7 +179,6 @@ Only items supported by the current repository are listed here:
 ## Known Technical Debt
 
 - `npm test` is a placeholder that exits with an error.
-- `cors` is declared but not used in current source.
 - Error payloads mix strings and objects.
 - Some controller and middleware response messages use inconsistent wording.
 - The seed script is intentionally destructive for development and must not be used against production data.

@@ -68,6 +68,8 @@ Auth routes are mounted at `/auth`:
 
 - `POST /auth/register`
 - `POST /auth/login`
+- `POST /auth/logout`
+- `GET /auth/me`
 
 Project routes are mounted at `/projects`:
 
