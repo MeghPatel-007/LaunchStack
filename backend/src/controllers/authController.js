@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import pool from '../db/pool.js'
+import { cookieOptions } from '../config/cookie.js'
 
 export async function registration(req, res, next) {
   const { username, email, password } = req.body
@@ -78,15 +79,7 @@ export async function login(req, res, next) {
     const options = { expiresIn: '24h' }
     const secret = process.env.JWT_SECRET
     const token = jwt.sign(payload, secret, options)
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 24 * 60 * 60 * 1000,
-      path: '/',
-      // Shared parent domain so the Next.js proxy can read it in production.
-      domain: process.env.COOKIE_DOMAIN || undefined,
-    })
+    res.cookie('token', token, cookieOptions)
     res.status(200).json({
       msg: 'User can login successfully',
       userId: result.rows[0].user_id,
@@ -100,4 +93,21 @@ export async function getCurrentUser(req, res, next) {
   return res.status(200).json({
     userId: req.user.user_id,
   })
+}
+
+export async function logout(req, res, next) {
+  try {
+    const origin = req.get('origin')
+    const allowedOrigin = process.env.FRONTEND_URL
+    if (allowedOrigin && origin && origin !== allowedOrigin) {
+      return res.status(403).json({ msg: 'Forbidden: Invalid origin' })
+    }
+    res.clearCookie('token', cookieOptions)
+    res.set('Cache-Control', 'no-store')
+    return res.status(200).json({
+      msg: 'User logged out successfully',
+    })
+  } catch (e) {
+    next(e)
+  }
 }

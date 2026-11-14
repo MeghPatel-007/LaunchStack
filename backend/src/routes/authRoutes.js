@@ -2,6 +2,7 @@ import express from 'express'
 import {
   getCurrentUser,
   login,
+  logout,
   registration,
 } from '../controllers/authController.js'
 import {
@@ -24,6 +25,7 @@ authRouter.post(
   validateEmail(['email']),
   login,
 )
+authRouter.post('/logout', logout)
 authRouter.get('/me', authenticate, getCurrentUser)
 
 export default authRouter
