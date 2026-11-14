@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import {
   BellDot,
@@ -6,10 +6,10 @@ import {
   EllipsisVertical,
   LogOut,
   Palette,
-} from "lucide-react"
-import Link from "next/link"
+} from 'lucide-react'
+import Link from 'next/link'
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,14 +18,16 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from '@/components/ui/dropdown-menu'
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@/components/ui/sidebar"
-import { initials } from "@/data/launchstack"
+} from '@/components/ui/sidebar'
+import { initials } from '@/data/launchstack'
+import { handleLogout } from '@/lib/services/authService'
+import { useRouter } from 'next/navigation'
 
 export function NavUser({
   user,
@@ -39,7 +41,7 @@ export function NavUser({
   base: string
 }) {
   const { isMobile } = useSidebar()
-
+  const router = useRouter()
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -67,7 +69,7 @@ export function NavUser({
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-(--anchor-width) min-w-56 rounded-lg"
-            side={isMobile ? "bottom" : "right"}
+            side={isMobile ? 'bottom' : 'right'}
             align="end"
             sideOffset={4}
           >
@@ -117,6 +119,9 @@ export function NavUser({
               <DropdownMenuItem
                 className="cursor-pointer"
                 render={<Link href="/auth/sign-in" />}
+                onClick={() => {
+                  handleLogout(router)
+                }}
               >
                 <LogOut />
                 Log out

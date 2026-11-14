@@ -1,13 +1,15 @@
 import type { useRouter } from 'next/navigation'
 import { toast } from '@/components/ui/toast'
-import { API_URL } from '@/lib/config'
+import { apiClient } from '@/lib/api/apiClient'
+import type {
+  AuthFormState,
+  AuthResponse,
+  LoginInput,
+  LogoutResponse,
+  SignupInput,
+} from '@/types/auth'
 
 type Router = ReturnType<typeof useRouter>
-
-type SignupState = {
-  setIsSubmitting: (value: boolean) => void
-  setPasswordMismatch: (value: boolean) => void
-}
 
 export const handleLogin = async (
   e: React.FormEvent<HTMLFormElement>,
@@ -15,41 +17,29 @@ export const handleLogin = async (
 ) => {
   e.preventDefault()
   const formData = new FormData(e.currentTarget)
-  const email = formData.get('email') as string
-  const password = formData.get('password') as string
+  const credentials: LoginInput = {
+    email: formData.get('email') as string,
+    password: formData.get('password') as string,
+  }
   try {
-    const res = await fetch(`${API_URL}/auth/login`, {
+    const result = await apiClient<AuthResponse>('/auth/login', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify(credentials),
     })
-    const result = await res.json()
-    if (!res.ok) {
-      toast.add({
-        title: 'Login failed',
-        description:
-          result?.msg ?? result?.error ?? result ?? 'Something went wrong',
-        type: 'error',
-      })
-      return
-    }
-    if (result.userId) {
-      toast.add({
-        title: 'Logged in',
-        description: result.msg ?? 'Welcome back',
-        type: 'success',
-      })
-      router.push(`/dashboard/${result.userId}`)
-    } else {
+    if (!result.userId) {
       toast.add({
         title: 'Login failed',
         description: result.msg ?? 'No user id returned',
         type: 'error',
       })
+      return
     }
+    toast.add({
+      title: 'Logged in',
+      description: result.msg ?? 'Welcome back',
+      type: 'success',
+    })
+    router.push(`/dashboard/${result.userId}`)
   } catch (err) {
     toast.add({
       title: 'Login failed',
@@ -62,12 +52,10 @@ export const handleLogin = async (
 export const handleSignup = async (
   e: React.FormEvent<HTMLFormElement>,
   router: Router,
-  { setIsSubmitting, setPasswordMismatch }: SignupState,
+  { setIsSubmitting, setPasswordMismatch }: AuthFormState,
 ) => {
   e.preventDefault()
   const formData = new FormData(e.currentTarget)
-  const username = (formData.get('username') as string).trim()
-  const email = (formData.get('email') as string).trim()
   const password = formData.get('password') as string
   const confirmPassword = formData.get('confirmPassword') as string
 
@@ -76,23 +64,22 @@ export const handleSignup = async (
     return
   }
 
+  const input: SignupInput = {
+    username: (formData.get('username') as string).trim(),
+    email: (formData.get('email') as string).trim(),
+    password,
+  }
+
   setIsSubmitting(true)
   try {
-    const res = await fetch(`${API_URL}/auth/register`, {
+    const result = await apiClient<AuthResponse>('/auth/register', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ username, email, password }),
+      body: JSON.stringify(input),
     })
-    const result = await res.json().catch(() => null)
-    if (!res.ok || !result?.userId) {
+    if (!result.userId) {
       toast.add({
         title: 'Sign up failed',
-        description:
-          typeof result === 'string'
-            ? result
-            : (result?.error ?? result?.msg ?? 'Something went wrong'),
+        description: result.msg ?? 'No user id returned',
         type: 'error',
       })
       return
@@ -111,5 +98,26 @@ export const handleSignup = async (
     })
   } finally {
     setIsSubmitting(false)
+  }
+}
+
+export const handleLogout = async (router: Router) => {
+  try {
+    const result = await apiClient<LogoutResponse>('/auth/logout', {
+      method: 'POST',
+    })
+    toast.add({
+      title: 'Logged out',
+      description: result.msg,
+      type: 'success',
+    })
+  } catch (err) {
+    toast.add({
+      title: 'Logout failed',
+      description: err instanceof Error ? err.message : 'Unexpected error',
+      type: 'error',
+    })
+  } finally {
+    router.push('/auth/sign-in')
   }
 }

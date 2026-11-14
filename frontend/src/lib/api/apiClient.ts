@@ -33,10 +33,19 @@ export async function apiClient<T>(
     : await response.text()
 
   if (!response.ok) {
+    // Backend errors come back as plain strings or as { error } / { msg } objects.
     const message =
-      typeof data === 'object' && data !== null && 'error' in data
-        ? String(data.error)
-        : `Request failed with status ${response.status}`
+      typeof data === 'string' && data
+        ? data
+        : typeof data === 'object' && data !== null
+          ? String(
+              'error' in data
+                ? data.error
+                : 'msg' in data
+                  ? data.msg
+                  : `Request failed with status ${response.status}`,
+            )
+          : `Request failed with status ${response.status}`
 
     throw new Error(message)
   }
