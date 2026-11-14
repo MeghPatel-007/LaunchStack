@@ -1,30 +1,28 @@
 import express from 'express'
 import cookieParser from 'cookie-parser'
+import helmet from 'helmet'
 import cors from 'cors'
 import { writingLogs } from './utils/ensureLogsDir.js'
 import projectRouter from './routes/projectRoutes.js'
 import projectPhaseRouter from './routes/projectPhaseRoutes.js'
 import authRouter from './routes/authRoutes.js'
 import { authenticate } from './middleware/authMiddleware.js'
-
+import { corsOptions } from './config/cors.js'
 export const app = express()
 
 // app.get('/', (req, res) => {
 //   res.send('hello world')
 // })
-
+app.use(helmet())
 app.use('/', async (req, res, next) => {
   const logs = req.method + req.path + '\n'
   await writingLogs(logs)
   next()
 })
 
-app.use(
-  cors({
-    origin: `http://localhost:${process.env.FRONTEND_PORT}`,
-    credentials: true,
-  }),
-)
+// cors origins means to allow other origins to communicate with this origins api req and responses
+app.use(cors(corsOptions))
+
 app.use(express.json())
 app.use(cookieParser())
 
