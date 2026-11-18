@@ -13,6 +13,7 @@ Implemented backend capabilities:
 - User registration, login, and logout
 - bcrypt password hashing and JWT authentication
 - Helmet security headers and an origin allowlist for CORS
+- Rate limiting on login and registration
 - Project creation, listing, filtering, reading, updating, and deletion
 - Project membership and OWNER/MEMBER roles
 - Project member listing, addition, and removal
@@ -45,6 +46,7 @@ There are no service or repository layers in the current implementation.
 - `jsonwebtoken`
 - `helmet`
 - `cors`
+- `express-rate-limit`
 - `dotenv`
 - `nodemon` for development
 
@@ -202,6 +204,17 @@ All phase endpoints require authentication and project membership/ownership as a
 Registration stores a bcrypt hash rather than a plaintext password. Login compares the supplied password with the stored hash and signs a JWT containing the user ID. Authenticated requests verify the JWT and confirm that the user still exists. Logout clears the `token` cookie with the same cookie options used to set it.
 
 Authentication answers who the caller is. Authorization checks whether that authenticated user is a project member or owner. Phase authorization first resolves the phase's project and then checks membership or ownership on that project.
+
+## Security controls
+
+Helmet sets security headers on every response. CORS compares the request origin with `ALLOWED_FRONTEND_ORIGINS`: a request with no origin or a listed origin is allowed, and any other origin receives no CORS headers instead of a server error.
+
+`express-rate-limit` guards the credential endpoints:
+
+- `POST /auth/login` allows 10 requests per IP per 15 minutes.
+- `POST /auth/register` allows 5 requests per IP per hour.
+
+A rejected request returns `429` with `Too many requests, please try again later.` and draft-8 `RateLimit` headers. The counters are in-memory and per process, so they reset on restart and are not shared across multiple instances.
 
 ## Frontend integration
 

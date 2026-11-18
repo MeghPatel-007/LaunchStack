@@ -65,7 +65,8 @@ This document describes the repository as it exists, using current source, the d
 
 ### Authentication: Pending
 
-- Production operational controls such as rate limiting and token revocation are not implemented or documented as current features.
+- Production operational controls such as token revocation are not implemented or documented as current features.
+- Login and registration rate limiting is implemented, but the counters are in-memory and not shared across instances.
 
 ### Authorization: Complete
 
@@ -151,6 +152,8 @@ The active source is under `backend/src/`. The database definition is under `dat
 - User registration/login
 - Session logout
 - JWT authentication
+- Helmet security headers and a CORS origin allowlist
+- Login and registration rate limiting
 - Project CRUD
 - Project filtering by `type`
 - Project statistics
@@ -183,6 +186,7 @@ Only items supported by the current repository are listed here:
 - Some controller and middleware response messages use inconsistent wording.
 - The seed script is intentionally destructive for development and must not be used against production data.
 - Database constraint handling is selective rather than a complete error taxonomy.
+- Rate-limit counters are in-memory per process, so they reset on restart and are not shared across instances.
 - Automated tests are absent.
 
 ## Recent Refactors
@@ -191,6 +195,8 @@ Only items supported by the current repository are listed here:
 - `fc40d6f`: centralized project authorization queries through `projectMembership.js` and added phase authorization middleware.
 - `72bebdb`: added shared validation middleware, phase validation utility, seed script, and cleanup-related changes.
 - The current cleanup also removed stale prototype implementations and corrected several error/status handling issues.
+- `8a1e87b`, `e55adc8`, `1365acc`, `1bfb13a`: added Helmet/CORS origin allowlist, logout with shared cookie options, the frontend `apiClient` layer, and matching documentation.
+- Rate limiting for login and registration lives in `backend/src/middleware/limiter.js` and is mounted on the auth routes.
 
 ## Testing Status
 
@@ -214,9 +220,9 @@ Not deployment-ready as a fully verified production release. The backend has a u
 
 The history shows incremental implementation and checkpoints rather than a single rewrite:
 
-`initial project -> Node/config/filesystem -> Express routes/middleware -> controllers -> PostgreSQL -> statistics -> phases -> membership/auth -> authorization refactor -> cleanup`
+`initial project -> Node/config/filesystem -> Express routes/middleware -> controllers -> PostgreSQL -> statistics -> phases -> membership/auth -> authorization refactor -> cleanup -> security middleware -> frontend API integration`
 
-The latest recorded commit is `72bebdb chore: checkpoint before backend cleanup`. Documentation updates in this working session are intentionally not committed.
+The recorded history ends at the current `main` head. Documentation updates in this working session are committed separately from the backend changes they describe.
 
 ## Next Engineering Milestone
 
