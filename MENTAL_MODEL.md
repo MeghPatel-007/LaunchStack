@@ -42,6 +42,8 @@ Login follows:
 
 Authentication answers: **Who are you?** The JWT carries `user_id`; `authenticate` verifies the token, validates the claim, checks that the user exists, and attaches `req.user`.
 
+Rate limiting answers: **How often may you try?** It is a separate control that runs before validation on the credential routes. Login allows 10 attempts per IP per 15 minutes; registration allows 5 per IP per hour. Exceeding a limit returns `429`, so brute-force attempts cost time even when the password is correct.
+
 Authorization answers: **What are you allowed to do?** Project authorization queries membership and reads the role. `OWNER` can change/delete the project and manage members/phases. `MEMBER` can read member-level project/phase resources.
 
 A phase ID alone is not enough to authorize a request. The phase belongs to a project, so phase middleware uses `getProjectIdFromPhase()` and then checks the authenticated user's role in that project. This is nested-resource authorization:
@@ -122,6 +124,7 @@ Commit history shows the concepts arriving in context: Node foundation, Express 
 - **Express:** middleware moves a request through routing, authorization, controller, and response.
 - **Middleware:** cross-cutting request decisions happen before the controller.
 - **Authentication:** JWT establishes the user identity.
+- **Rate limiting:** per-IP attempt budgets slow brute-force traffic on the credential routes.
 - **Authorization:** membership and role decide the allowed action.
 - **PostgreSQL:** SQL persists the model and constraints protect its integrity.
 - **SQL:** parameters carry values separately from query structure.

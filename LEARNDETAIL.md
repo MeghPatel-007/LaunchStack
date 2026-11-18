@@ -92,6 +92,10 @@ Validation middleware is factory-style because each route can specify the field 
 
 `authenticate` reads the `token` cookie, verifies the JWT, validates the positive integer `user_id`, checks the user row, and attaches the verified user to `req.user`.
 
+`helmet()` sets security headers on every response. `cors(corsOptions)` compares the request origin to `ALLOWED_FRONTEND_ORIGINS`. A missing origin or a listed origin continues normally; any other origin gets no CORS headers because the origin callback returns `callback(null, false)`. This is a deliberate change from `callback(new Error(...))`, which would surface as a `500` instead of a plain origin rejection.
+
+`loginRateLimiter` and `registerRateLimiter` come from `express-rate-limit` and are mounted before validation on `POST /auth/login` and `POST /auth/register`. They allow 10 requests per IP per 15 minutes and 5 per IP per hour, return `429` with a fixed message, and send draft-8 `RateLimit` headers.
+
 Project authorization distinguishes project existence, membership, and ownership. Phase authorization has two paths: resolve a phase to its project for phase routes, or validate the project directly for project-phase collection routes.
 
 `next()` advances normal processing. `next(e)` transfers control to error middleware. Calling `next()` twice is incorrect because it can run later middleware/controllers twice; this was fixed during cleanup.
@@ -255,9 +259,9 @@ The current repository does not provide a completed production query-plan study 
 
 Registration validates fields, normalizes the email for lookup/storage, hashes the password with bcrypt, and inserts a password hash. Login retrieves the user by normalized email, compares the supplied password to the hash, and signs a JWT with the user's ID and a 24-hour expiry.
 
-On a protected request, authentication reads the header, verifies the token with `JWT_SECRET`, validates the payload ID, checks the user row, and sets `req.user`. Controllers use that identity rather than accepting a client-provided owner identity.
+On a protected request, authentication reads the `token` cookie, verifies the token with `JWT_SECRET`, validates the payload ID, checks the user row, and sets `req.user`. Controllers use that identity rather than accepting a client-provided owner identity.
 
-The mechanism present is JWT bearer authentication. Token revocation, refresh tokens, rate limiting, and other mechanisms are not current features and are not described as implemented.
+The mechanism present is JWT bearer authentication. Login and registration are rate limited per IP. Token revocation, refresh tokens, and other mechanisms are not current features and are not described as implemented.
 
 ## 20. Authorization
 
