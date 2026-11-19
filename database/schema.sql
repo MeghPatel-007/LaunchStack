@@ -79,4 +79,4 @@ create table project_members(
 	references users(user_id)
 	on delete cascade,
 	unique (user_id,project_id)
-)
+);

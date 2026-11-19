@@ -38,7 +38,7 @@ export async function registration(req, res, next) {
         returning user_id
         `
     const result = await pool.query(query, [username, validEmail, passwordHash])
-    res.status(200).json({
+    res.status(201).json({
       msg: 'User is created successfully',
       userId: result.rows[0].user_id,
     })
@@ -98,7 +98,7 @@ export async function getCurrentUser(req, res, next) {
 export async function logout(req, res, next) {
   try {
     const origin = req.get('origin')
-    const allowedOrigin = process.env.FRONTEND_URL
+    const allowedOrigin = process.env.ALLOWED_FRONTEND_ORIGINS
     if (allowedOrigin && origin && origin !== allowedOrigin) {
       return res.status(403).json({ msg: 'Forbidden: Invalid origin' })
     }

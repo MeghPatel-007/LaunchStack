@@ -6,6 +6,7 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { SidebarConfigProvider } from '@/contexts/sidebar-context'
 import { Toaster } from '@/components/ui/toast'
 import { inter } from '@/lib/fonts'
+import { SessionExpiryHandler } from './auth/SessionExpiryHandler'
 
 export const metadata: Metadata = {
   title: 'ShadcnStore - Modern Admin Dashboard Template',
@@ -43,7 +44,10 @@ export default function RootLayout({
       <body className={inter.className}>
         <ThemeProvider defaultTheme="system" storageKey="nextjs-ui-theme">
           <SidebarConfigProvider>
-            <Toaster>{children}</Toaster>
+            <Toaster>
+              <SessionExpiryHandler />
+              {children}
+            </Toaster>
           </SidebarConfigProvider>
         </ThemeProvider>
       </body>

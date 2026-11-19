@@ -30,6 +30,7 @@ export async function ensureLogsDir() {
 
 export async function writingLogs(logs) {
   try {
+    if (process.env.NODE_ENV === 'test') return
     const today = new Date().toISOString().split('T')[0]
     const logFileName = `app-info-${today}.log`
     const logFilePath = path.join(__path, logFileName)

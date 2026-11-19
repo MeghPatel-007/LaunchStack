@@ -4,7 +4,11 @@ import { fileURLToPath } from 'url'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-dotenv.config({ path: path.resolve(__dirname, '../../.env') }) // dynamic relative path
+const envFile = process.env.NODE_ENV === 'test' ? '.env.test' : '.env'
+
+dotenv.config({
+  path: path.resolve(__dirname, `../../${envFile}`), // dynamic relative path
+})
 
 export function validatePortNumber() {
   const port = process.env.PORT

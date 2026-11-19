@@ -9,10 +9,15 @@ export async function authenticate(req, res, next) {
       error: 'Authentication required',
     })
   }
-
+  let payload
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET)
-
+    payload = jwt.verify(token, process.env.JWT_SECRET)
+  } catch (error) {
+    return res.status(401).json({
+      error: 'Invalid or expired token',
+    })
+  }
+  try {
     if (
       typeof payload !== 'object' ||
       payload === null ||
@@ -23,7 +28,6 @@ export async function authenticate(req, res, next) {
         error: 'Invalid token payload',
       })
     }
-
     const query = `
       SELECT user_id
       FROM users
@@ -31,7 +35,6 @@ export async function authenticate(req, res, next) {
     `
 
     const result = await pool.query(query, [payload.user_id])
-
     if (result.rowCount === 0) {
       return res.status(401).json({
         error: 'User does not exist',
@@ -41,11 +44,8 @@ export async function authenticate(req, res, next) {
     req.user = {
       user_id: result.rows[0].user_id,
     }
-
     return next()
   } catch (error) {
-    return res.status(401).json({
-      error: 'Invalid or expired token',
-    })
+    return next(error)
   }
 }

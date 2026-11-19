@@ -15,9 +15,13 @@ export const app = express()
 // })
 app.use(helmet())
 app.use('/', async (req, res, next) => {
-  const logs = req.method + req.path + '\n'
-  await writingLogs(logs)
-  next()
+  try {
+    const logs = req.method + req.path + '\n'
+    await writingLogs(logs)
+    next()
+  } catch (error) {
+    next(error)
+  }
 })
 
 // cors origins means to allow other origins to communicate with this origins api req and responses

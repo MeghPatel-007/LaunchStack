@@ -33,6 +33,19 @@ export async function apiClient<T>(
     : await response.text()
 
   if (!response.ok) {
+    const normalizedEndpoint = endpoint.split('?')[0].replace(/\/+$/, '')
+
+    const isAuthEndpoint = ['/auth/login', '/auth/register'].includes(
+      normalizedEndpoint,
+    )
+    // Detect 401 on protected routes and broadcast the event
+    if (
+      response.status === 401 &&
+      !isAuthEndpoint &&
+      typeof window !== 'undefined'
+    ) {
+      window.dispatchEvent(new CustomEvent('auth:unauthorized'))
+    }
     // Backend errors come back as plain strings or as { error } / { msg } objects.
     const message =
       typeof data === 'string' && data
