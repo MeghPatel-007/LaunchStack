@@ -40,6 +40,7 @@ export function validateOptionalStrings(fields) {
     for (const field of fields) {
       if (
         typeof req.body[field] !== 'undefined' &&
+        req.body[field] !== null &&
         typeof req.body[field] !== 'string'
       ) {
         return res.status(400).json({
