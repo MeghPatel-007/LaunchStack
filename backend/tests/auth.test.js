@@ -15,6 +15,8 @@ import {
 // a test fails partway through.
 const createdEmails = []
 
+const ORIGIN = 'http://localhost:3000'
+
 // express-rate-limit keeps counters in memory per IP. Every Supertest request
 // comes from loopback, so clear the counters between tests.
 const loopbackKeys = ['127.0.0.1', '::1', '::ffff:127.0.0.1']
@@ -38,7 +40,10 @@ function authCookie(response) {
 }
 
 async function postRegister(payload) {
-  const response = await request(app).post('/auth/register').send(payload)
+  const response = await request(app)
+    .post('/auth/register')
+    .set('Origin', ORIGIN)
+    .send(payload)
 
   if (response.status === 201 && typeof payload.email === 'string') {
     createdEmails.push(payload.email.trim().toLowerCase())
@@ -48,7 +53,10 @@ async function postRegister(payload) {
 }
 
 async function postLogin(payload) {
-  return request(app).post('/auth/login').send(payload)
+  return request(app)
+    .post('/auth/login')
+    .set('Origin', ORIGIN)
+    .send(payload)
 }
 
 async function registerUser(overrides = {}) {
@@ -420,18 +428,23 @@ test('POST /auth/login - issues an HttpOnly session cookie with the configured a
   assert.match(cookie, /SameSite=Lax/)
   // secure is only enabled when NODE_ENV=production.
   assert.doesNotMatch(cookie, /Secure/)
-  // cookieOptions sets no maxAge/expires, so the cookie is a session cookie.
-  assert.doesNotMatch(cookie, /Max-Age|Expires=/)
+  // cookieOptions sets a 24 hour maxAge.
+  assert.match(cookie, /Max-Age=86400/)
 })
 
 test('POST /auth/logout - clears the cookie and disables caching', async () => {
   const { email, password } = await registerUser()
   const agent = request.agent(app)
   await resetLimiters()
-  const login = await agent.post('/auth/login').send({ email, password })
+  const login = await agent
+    .post('/auth/login')
+    .set('Origin', ORIGIN)
+    .send({ email, password })
   assert.ok(login.headers['set-cookie']?.length)
 
-  const response = await agent.post('/auth/logout')
+  const response = await agent
+    .post('/auth/logout')
+    .set('Origin', ORIGIN)
 
   assert.equal(response.status, 200)
   assert.equal(response.body.msg, 'User logged out successfully')
@@ -442,51 +455,20 @@ test('POST /auth/logout - clears the cookie and disables caching', async () => {
   assert.match(cookie, /HttpOnly/)
 })
 
-test('POST /auth/logout - allows a request without an Origin header', async () => {
-  const previous = process.env.ALLOWED_FRONTEND_ORIGINS
-  process.env.ALLOWED_FRONTEND_ORIGINS = 'http://localhost:3000'
+test('POST /auth/logout - rejects a request without an Origin header', async () => {
+  const response = await request(app).post('/auth/logout')
 
-  try {
-    const response = await request(app).post('/auth/logout')
-    assert.equal(response.status, 200)
-    assert.equal(response.body.msg, 'User logged out successfully')
-  } finally {
-    if (previous === undefined) delete process.env.ALLOWED_FRONTEND_ORIGINS
-    else process.env.ALLOWED_FRONTEND_ORIGINS = previous
-  }
+  assert.equal(response.status, 403)
+  assert.deepEqual(response.body, { error: 'Forbidden: Invalid origin' })
 })
 
-test('POST /auth/logout - rejects a disallowed Origin when ALLOWED_FRONTEND_ORIGINS is configured', async () => {
-  const previous = process.env.ALLOWED_FRONTEND_ORIGINS
-  process.env.ALLOWED_FRONTEND_ORIGINS = 'http://localhost:3000'
+test('POST /auth/logout - rejects a disallowed Origin', async () => {
+  const response = await request(app)
+    .post('/auth/logout')
+    .set('Origin', 'http://evil.example.com')
 
-  try {
-    const response = await request(app)
-      .post('/auth/logout')
-      .set('Origin', 'http://evil.example.com')
-
-    assert.equal(response.status, 403)
-    assert.deepEqual(response.body, { msg: 'Forbidden: Invalid origin' })
-  } finally {
-    if (previous === undefined) delete process.env.ALLOWED_FRONTEND_ORIGINS
-    else process.env.ALLOWED_FRONTEND_ORIGINS = previous
-  }
-})
-
-test('POST /auth/logout - allows any Origin when ALLOWED_FRONTEND_ORIGINS is not configured', async () => {
-  const previous = process.env.ALLOWED_FRONTEND_ORIGINS
-  delete process.env.ALLOWED_FRONTEND_ORIGINS
-
-  try {
-    const response = await request(app)
-      .post('/auth/logout')
-      .set('Origin', 'http://evil.example.com')
-
-    assert.equal(response.status, 200)
-    assert.equal(response.body.msg, 'User logged out successfully')
-  } finally {
-    if (previous !== undefined) process.env.ALLOWED_FRONTEND_ORIGINS = previous
-  }
+  assert.equal(response.status, 403)
+  assert.deepEqual(response.body, { error: 'Forbidden: Invalid origin' })
 })
 
 test('GET /auth/me - returns the current user id for a valid session cookie', async () => {
@@ -560,12 +542,14 @@ test('POST /auth/register - rejects requests above the rate limit', async () => 
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const response = await request(app)
       .post('/auth/register')
+      .set('Origin', ORIGIN)
       .send({ ...base, email: uniqueEmail(`rate-${attempt}`) })
     statuses.push(response.status)
   }
 
   const response = await request(app)
     .post('/auth/register')
+    .set('Origin', ORIGIN)
     .send({ ...base, email: uniqueEmail('rate-blocked') })
 
   assert.deepEqual(statuses, [400, 400, 400, 400, 400])
@@ -581,12 +565,14 @@ test('POST /auth/login - rejects requests above the rate limit', async () => {
   for (let attempt = 0; attempt < 10; attempt += 1) {
     const response = await request(app)
       .post('/auth/login')
+      .set('Origin', ORIGIN)
       .send({ email: uniqueEmail(`rate-${attempt}`) })
     statuses.push(response.status)
   }
 
   const response = await request(app)
     .post('/auth/login')
+    .set('Origin', ORIGIN)
     .send({ email: uniqueEmail('rate-blocked') })
 
   assert.deepEqual(statuses, [400, 400, 400, 400, 400, 400, 400, 400, 400, 400])
@@ -599,6 +585,7 @@ test('POST /auth/login - rejects requests above the rate limit', async () => {
 test('POST /auth/register - returns 400 for malformed JSON', async () => {
   const response = await request(app)
     .post('/auth/register')
+    .set('Origin', ORIGIN)
     .set('Content-Type', 'application/json')
     .send('{"username": "Broken"')
 

@@ -44,9 +44,14 @@ function withEnv(overrides, fn) {
   }
 }
 
-test('validatePortNumber - rejects missing, empty, and non-numeric ports', () => {
+test('validatePortNumber - defaults to 8000 when PORT is missing', () => {
+  withEnv({ PORT: undefined }, () => {
+    assert.equal(validatePortNumber(), 8000)
+  })
+})
+
+test('validatePortNumber - rejects empty and invalid ports', () => {
   const invalid = [
-    [undefined, 'PORT env var is missing or empty'],
     ['', 'PORT env var is missing or empty'],
     ['   ', 'PORT env var is missing or empty'],
     ['abc', 'PORT env var is invalid'],

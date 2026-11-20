@@ -49,6 +49,7 @@ async function withDatabaseError(code, fn) {
 function register(overrides = {}) {
   return request(app)
     .post('/auth/register')
+    .set('Origin', 'http://localhost:3000')
     .send({
       username: 'Error User',
       email: `errors-${Date.now()}-${Math.random().toString(16).slice(2)}@example.com`,
@@ -107,6 +108,7 @@ test('malformed JSON on protected routes is rejected before authentication', asy
   try {
     const response = await request(app)
       .post('/projects')
+      .set('Origin', 'http://localhost:3000')
       .set('Content-Type', 'application/json')
       .send('{"name": ')
 
@@ -124,6 +126,7 @@ test('malformed JSON on auth routes returns 400', async () => {
   try {
     const response = await request(app)
       .post('/auth/login')
+      .set('Origin', 'http://localhost:3000')
       .set('Content-Type', 'application/json')
       .send('not json')
 

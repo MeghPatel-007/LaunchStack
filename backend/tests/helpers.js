@@ -9,6 +9,7 @@ import {
 } from '../src/middleware/limiter.js'
 
 const loopbackKeys = ['127.0.0.1', '::1', '::ffff:127.0.0.1']
+const ORIGIN = 'http://localhost:3000'
 
 export function assertTestEnvironment() {
   assert.equal(process.env.NODE_ENV, 'test', 'tests must run with NODE_ENV=test')
@@ -36,6 +37,7 @@ export async function registerUser(overrides = {}) {
   const password = overrides.password ?? 'TestPassword123'
   const response = await request(app)
     .post('/auth/register')
+    .set('Origin', ORIGIN)
     .send({ username: 'Test User', email, password, ...overrides })
 
   assert.equal(response.status, 201, 'expected user registration to succeed')
@@ -46,6 +48,7 @@ export async function loginCookie(email, password) {
   await resetLimiters()
   const response = await request(app)
     .post('/auth/login')
+    .set('Origin', ORIGIN)
     .send({ email, password })
 
   assert.equal(response.status, 200, 'expected login to succeed')
@@ -56,6 +59,7 @@ export async function createProject(cookie, overrides = {}) {
   const response = await request(app)
     .post('/projects')
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
     .send({
       name: 'Test Project',
       description: 'Project description',
@@ -72,6 +76,7 @@ export async function createPhase(cookie, projectId, overrides = {}) {
   const response = await request(app)
     .post(`/projects/${projectId}/phases`)
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
     .send({
       name: 'Test Phase',
       description: 'Phase description',
@@ -88,6 +93,7 @@ export async function addMember(cookie, projectId, userId) {
   const response = await request(app)
     .post(`/projects/${projectId}/members`)
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
     .send({ userId })
 
   assert.equal(response.status, 200, 'expected member creation to succeed')

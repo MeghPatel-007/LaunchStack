@@ -17,6 +17,8 @@ import {
 const createdEmails = []
 const createdProjectIds = []
 
+const ORIGIN = 'http://localhost:3000'
+
 before(async () => {
   assertTestEnvironment()
   await pool.query('SELECT 1')
@@ -56,11 +58,11 @@ function phaseBody(overrides = {}) {
 
 test('phase routes - reject unauthenticated requests', async () => {
   const responses = await Promise.all([
-    request(app).post('/projects/1/phases').send(phaseBody()),
+    request(app).post('/projects/1/phases').set('Origin', ORIGIN).send(phaseBody()),
     request(app).get('/projects/1/phases'),
     request(app).get('/phases/1'),
-    request(app).put('/phases/1').send(phaseBody()),
-    request(app).delete('/phases/1'),
+    request(app).put('/phases/1').set('Origin', ORIGIN).send(phaseBody()),
+    request(app).delete('/phases/1').set('Origin', ORIGIN),
   ])
 
   for (const response of responses) {
@@ -75,6 +77,7 @@ test('POST /projects/:projectId/phases - creates a phase for the owner', async (
   const response = await request(app)
     .post(`/projects/${projectId}/phases`)
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
     .send(phaseBody())
 
   assert.equal(response.status, 201)
@@ -104,6 +107,7 @@ test('POST /projects/:projectId/phases - accepts phase descriptions as optional'
   const response = await request(app)
     .post(`/projects/${projectId}/phases`)
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
     .send({ name: 'Build', status: 'NOT_STARTED', position: 1 })
 
   assert.equal(response.status, 201)
@@ -116,6 +120,7 @@ test('POST /projects/:projectId/phases - accepts a null description', async () =
   const response = await request(app)
     .post(`/projects/${projectId}/phases`)
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
     .send({
       name: 'Null description',
       description: null,
@@ -157,6 +162,7 @@ test('POST /projects/:projectId/phases - enforces status and timestamp rules', a
     const response = await request(app)
       .post(`/projects/${projectId}/phases`)
       .set('Cookie', cookie)
+      .set('Origin', ORIGIN)
       .send(phaseBody(overrides))
 
     assert.equal(response.status, 400)
@@ -170,6 +176,7 @@ test('POST /projects/:projectId/phases - stores timestamps for started and finis
   const inProgress = await request(app)
     .post(`/projects/${projectId}/phases`)
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
     .send(
       phaseBody({
         status: 'IN_PROGRESS',
@@ -186,6 +193,7 @@ test('POST /projects/:projectId/phases - stores timestamps for started and finis
   const completed = await request(app)
     .post(`/projects/${projectId}/phases`)
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
     .send(
       phaseBody({
         status: 'COMPLETED',
@@ -218,6 +226,7 @@ test('POST /projects/:projectId/phases - validates the body', async () => {
     const response = await request(app)
       .post(`/projects/${projectId}/phases`)
       .set('Cookie', cookie)
+      .set('Origin', ORIGIN)
       .send(phaseBody(overrides))
 
     assert.equal(response.status, 400)
@@ -232,6 +241,7 @@ test('POST /projects/:projectId/phases - rejects duplicate positions per project
   const duplicate = await request(app)
     .post(`/projects/${projectId}/phases`)
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
     .send(phaseBody({ position: 1 }))
 
   assert.equal(duplicate.status, 409)
@@ -245,6 +255,7 @@ test('POST /projects/:projectId/phases - rejects duplicate positions per project
   const reusedAcrossProjects = await request(app)
     .post(`/projects/${otherProjectId}/phases`)
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
     .send(phaseBody({ position: 1 }))
 
   assert.equal(reusedAcrossProjects.status, 201)
@@ -260,6 +271,7 @@ test('POST /projects/:projectId/phases - enforces project ownership', async () =
   const asMember = await request(app)
     .post(`/projects/${projectId}/phases`)
     .set('Cookie', member.cookie)
+    .set('Origin', ORIGIN)
     .send(phaseBody())
   assert.equal(asMember.status, 403)
   assert.equal(asMember.body, 'Only project owners are allowed')
@@ -267,6 +279,7 @@ test('POST /projects/:projectId/phases - enforces project ownership', async () =
   const asOutsider = await request(app)
     .post(`/projects/${projectId}/phases`)
     .set('Cookie', outsiderCookie)
+    .set('Origin', ORIGIN)
     .send(phaseBody())
   assert.equal(asOutsider.status, 403)
   assert.equal(asOutsider.body, 'Only project owners are allowed')
@@ -284,6 +297,7 @@ test('POST /projects/:projectId/phases - rejects invalid or unknown projects', a
   const invalid = await request(app)
     .post('/projects/abc/phases')
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
     .send(phaseBody())
   assert.equal(invalid.status, 400)
   assert.equal(invalid.body, 'Invalid Id')
@@ -291,6 +305,7 @@ test('POST /projects/:projectId/phases - rejects invalid or unknown projects', a
   const missing = await request(app)
     .post('/projects/2000000000/phases')
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
     .send(phaseBody())
   assert.equal(missing.status, 404)
   assert.equal(missing.body, 'Project doesnot exist')
@@ -404,6 +419,7 @@ test('PUT /phases/:id - updates a phase as the owner', async () => {
   const response = await request(app)
     .put(`/phases/${phase.phase_id}`)
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
     .send({
       name: 'Delivery',
       description: 'Ship it',
@@ -446,6 +462,7 @@ test('PUT /phases/:id - accepts a null optional description', async () => {
   const response = await request(app)
     .put(`/phases/${phase.phase_id}`)
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
     .send({
       name: 'Cleared',
       description: null,
@@ -474,6 +491,7 @@ test('PUT /phases/:id - allows keeping the current position and completing a pha
   const response = await request(app)
     .put(`/phases/${phase.phase_id}`)
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
     .send({
       name: 'Done',
       status: 'COMPLETED',
@@ -498,6 +516,7 @@ test('PUT /phases/:id - rejects positions used by another phase', async () => {
   const response = await request(app)
     .put(`/phases/${second.phase_id}`)
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
     .send(phaseBody({ position: 1 }))
 
   assert.equal(response.status, 409)
@@ -524,6 +543,7 @@ test('PUT /phases/:id - enforces status and timestamp rules', async () => {
     const response = await request(app)
       .put(`/phases/${phase.phase_id}`)
       .set('Cookie', cookie)
+      .set('Origin', ORIGIN)
       .send(phaseBody(overrides))
 
     assert.equal(response.status, 400)
@@ -556,6 +576,7 @@ test('PUT /phases/:id - validates the body', async () => {
     const response = await request(app)
       .put(`/phases/${phase.phase_id}`)
       .set('Cookie', cookie)
+      .set('Origin', ORIGIN)
       .send(phaseBody(overrides))
 
     assert.equal(response.status, 400)
@@ -571,6 +592,7 @@ test('PUT /phases/:id - enforces ownership and existence', async () => {
   const asMember = await request(app)
     .put(`/phases/${phase.phase_id}`)
     .set('Cookie', member.cookie)
+    .set('Origin', ORIGIN)
     .send(phaseBody())
   assert.equal(asMember.status, 403)
   assert.equal(asMember.body, 'Only project owners are allowed')
@@ -578,6 +600,7 @@ test('PUT /phases/:id - enforces ownership and existence', async () => {
   const unknown = await request(app)
     .put('/phases/2000000000')
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
     .send(phaseBody())
   assert.equal(unknown.status, 404)
   assert.equal(unknown.body, 'Phase does not exist')
@@ -585,6 +608,7 @@ test('PUT /phases/:id - enforces ownership and existence', async () => {
   const invalidId = await request(app)
     .put('/phases/abc')
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
     .send(phaseBody())
   assert.equal(invalidId.status, 400)
   assert.equal(invalidId.body, 'Invalid Id')
@@ -597,6 +621,7 @@ test('DELETE /phases/:id - deletes a phase as the owner', async () => {
   const response = await request(app)
     .delete(`/phases/${phase.phase_id}`)
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
 
   assert.equal(response.status, 200)
   assert.equal(response.body, 'successfully deleted')
@@ -611,6 +636,7 @@ test('DELETE /phases/:id - deletes a phase as the owner', async () => {
   const replacement = await request(app)
     .post(`/projects/${projectId}/phases`)
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
     .send(phaseBody())
   assert.equal(replacement.status, 201)
 })
@@ -623,6 +649,7 @@ test('DELETE /phases/:id - enforces ownership and existence', async () => {
   const asMember = await request(app)
     .delete(`/phases/${phase.phase_id}`)
     .set('Cookie', member.cookie)
+    .set('Origin', ORIGIN)
   assert.equal(asMember.status, 403)
   assert.equal(asMember.body, 'Only project owners are allowed')
 
@@ -635,12 +662,14 @@ test('DELETE /phases/:id - enforces ownership and existence', async () => {
   const unknown = await request(app)
     .delete('/phases/2000000000')
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
   assert.equal(unknown.status, 404)
   assert.equal(unknown.body, 'Phase does not exist')
 
   const invalidId = await request(app)
     .delete('/phases/abc')
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
   assert.equal(invalidId.status, 400)
   assert.equal(invalidId.body, 'Invalid Id')
 })

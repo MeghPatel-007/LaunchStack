@@ -15,6 +15,7 @@ import {
 
 const createdEmails = []
 const secret = process.env.JWT_SECRET
+const ORIGIN = 'http://localhost:3000'
 
 before(() => {
   assertTestEnvironment()
@@ -93,6 +94,7 @@ test('login sets a hardened session cookie', async () => {
 
   const response = await request(app)
     .post('/auth/login')
+    .set('Origin', ORIGIN)
     .send({ email: user.email, password: user.password })
 
   assert.equal(response.status, 200)
@@ -103,7 +105,7 @@ test('login sets a hardened session cookie', async () => {
   assert.match(cookie, /SameSite=Lax/i)
   assert.doesNotMatch(cookie, /Secure/i)
   assert.doesNotMatch(cookie, /Domain=/i)
-  assert.doesNotMatch(cookie, /Max-Age=/i)
+  assert.match(cookie, /Max-Age=86400/i)
 })
 
 test('logout clears the session cookie and disables caching', async () => {
@@ -113,6 +115,7 @@ test('logout clears the session cookie and disables caching', async () => {
   const response = await request(app)
     .post('/auth/logout')
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
 
   assert.equal(response.status, 200)
   assert.equal(response.headers['cache-control'], 'no-store')
@@ -186,8 +189,8 @@ test('authentication rejects tokens with an invalid signature', async () => {
 
 test('protected routes reject unauthenticated requests before validation', async () => {
   const responses = await Promise.all([
-    request(app).post('/projects').send({}),
-    request(app).post('/projects/abc/phases').send({}),
+    request(app).post('/projects').set('Origin', ORIGIN).send({}),
+    request(app).post('/projects/abc/phases').set('Origin', ORIGIN).send({}),
   ])
 
   for (const response of responses) {
@@ -203,6 +206,7 @@ test('login rate limit returns 429 with rate limit headers', async () => {
     for (let attempt = 1; attempt <= 10; attempt += 1) {
       const response = await request(app)
         .post('/auth/login')
+        .set('Origin', ORIGIN)
         .send({ email: user.email, password: 'WrongPassword1' })
       assert.equal(response.status, 401, `attempt ${attempt} should be allowed`)
       assert.ok(response.headers.ratelimit, 'rate limit header is present')
@@ -210,6 +214,7 @@ test('login rate limit returns 429 with rate limit headers', async () => {
 
     const blocked = await request(app)
       .post('/auth/login')
+      .set('Origin', ORIGIN)
       .send({ email: user.email, password: user.password })
 
     assert.equal(blocked.status, 429)
@@ -230,6 +235,7 @@ test('registration rate limit returns 429 after five attempts', async () => {
     for (let attempt = 1; attempt <= 5; attempt += 1) {
       const response = await request(app)
         .post('/auth/register')
+        .set('Origin', ORIGIN)
         .send({ username: 'duplicate', email: user.email, password: 'Password123' })
       allowedStatuses.push(response.status)
     }
@@ -238,6 +244,7 @@ test('registration rate limit returns 429 after five attempts', async () => {
 
     const blocked = await request(app)
       .post('/auth/register')
+      .set('Origin', ORIGIN)
       .send({ username: 'duplicate', email: user.email, password: 'Password123' })
 
     assert.equal(blocked.status, 429)
@@ -271,4 +278,41 @@ test('ID validation accepts large numeric ids', async () => {
 
   assert.equal(response.status, 404)
   assert.equal(response.body, 'Project does not exist')
+})
+
+test('origin validation allows state-changing requests from an allowed origin', async () => {
+  const user = await createUser()
+
+  const response = await request(app)
+    .post('/auth/login')
+    .set('Origin', ORIGIN)
+    .send({ email: user.email, password: user.password })
+
+  assert.equal(response.status, 200)
+})
+
+test('origin validation rejects state-changing requests from a disallowed origin', async () => {
+  const response = await request(app)
+    .post('/auth/login')
+    .set('Origin', 'http://evil.example')
+    .send({ email: 'nobody@example.com', password: 'Password123' })
+
+  assert.equal(response.status, 403)
+  assert.deepEqual(response.body, { error: 'Forbidden: Invalid origin' })
+})
+
+test('origin validation rejects state-changing requests without an origin', async () => {
+  const response = await request(app)
+    .post('/auth/login')
+    .send({ email: 'nobody@example.com', password: 'Password123' })
+
+  assert.equal(response.status, 403)
+  assert.deepEqual(response.body, { error: 'Forbidden: Invalid origin' })
+})
+
+test('origin validation allows safe requests without an origin', async () => {
+  const response = await request(app).get('/health')
+
+  assert.equal(response.status, 200)
+  assert.deepEqual(response.body, { status: 'ok', service: 'LaunchStack API' })
 })

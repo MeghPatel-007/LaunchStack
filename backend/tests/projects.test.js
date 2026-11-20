@@ -17,6 +17,8 @@ import {
 const createdEmails = []
 const createdProjectIds = []
 
+const ORIGIN = 'http://localhost:3000'
+
 before(async () => {
   assertTestEnvironment()
   await pool.query('SELECT 1')
@@ -48,13 +50,13 @@ test('GET /projects - rejects unauthenticated requests', async () => {
   const responses = await Promise.all([
     request(app).get('/projects'),
     request(app).get('/projects/stats'),
-    request(app).post('/projects').send({ name: 'x', project_type: 'y' }),
+    request(app).post('/projects').set('Origin', ORIGIN).send({ name: 'x', project_type: 'y' }),
     request(app).get('/projects/1'),
-    request(app).put('/projects/1').send({ name: 'x', project_type: 'y' }),
-    request(app).delete('/projects/1'),
+    request(app).put('/projects/1').set('Origin', ORIGIN).send({ name: 'x', project_type: 'y' }),
+    request(app).delete('/projects/1').set('Origin', ORIGIN),
     request(app).get('/projects/1/members'),
-    request(app).post('/projects/1/members').send({ userId: 1 }),
-    request(app).delete('/projects/1/members/1'),
+    request(app).post('/projects/1/members').set('Origin', ORIGIN).send({ userId: 1 }),
+    request(app).delete('/projects/1/members/1').set('Origin', ORIGIN),
   ])
 
   for (const response of responses) {
@@ -71,6 +73,7 @@ test('POST /projects - creates a project and its owner membership', async () => 
   const response = await request(app)
     .post('/projects')
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
     .send({
       name: '  Trimmed Project  ',
       description: 'Description',
@@ -105,6 +108,7 @@ test('POST /projects - accepts a project without optional fields', async () => {
   const response = await request(app)
     .post('/projects')
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
     .send({ name: 'Minimal', project_type: 'api' })
 
   assert.equal(response.status, 201)
@@ -126,6 +130,7 @@ test('POST /projects - accepts null optional fields', async () => {
   const response = await request(app)
     .post('/projects')
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
     .send({
       name: 'Null optionals',
       project_type: 'web',
@@ -161,6 +166,7 @@ test('POST /projects - rejects missing and invalid required fields', async () =>
     const response = await request(app)
       .post('/projects')
       .set('Cookie', cookie)
+      .set('Origin', ORIGIN)
       .send(body)
 
     assert.equal(response.status, 400)
@@ -175,6 +181,7 @@ test('POST /projects - rejects non-string optional fields', async () => {
     const response = await request(app)
       .post('/projects')
       .set('Cookie', cookie)
+      .set('Origin', ORIGIN)
       .send({ name: 'x', project_type: 'web', [field]: 42 })
 
     assert.equal(response.status, 400)
@@ -290,6 +297,7 @@ test('PUT /projects/:id - updates a project as its owner', async () => {
   const response = await request(app)
     .put(`/projects/${projectId}`)
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
     .send({
       name: '  Renamed  ',
       description: 'Updated description',
@@ -319,6 +327,7 @@ test('PUT /projects/:id - accepts a null optional description', async () => {
   const response = await request(app)
     .put(`/projects/${projectId}`)
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
     .send({ name: 'Cleared', project_type: 'web', description: null })
 
   assert.equal(response.status, 200)
@@ -337,6 +346,7 @@ test('PUT /projects/:id - rejects members, non-members, and missing projects', a
   const memberResponse = await request(app)
     .put(`/projects/${projectId}`)
     .set('Cookie', member.cookie)
+    .set('Origin', ORIGIN)
     .send({ name: 'x', project_type: 'web' })
   assert.equal(memberResponse.status, 403)
   assert.equal(memberResponse.body, 'Only project owners are allowed')
@@ -344,6 +354,7 @@ test('PUT /projects/:id - rejects members, non-members, and missing projects', a
   const missing = await request(app)
     .put('/projects/2000000000')
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
     .send({ name: 'x', project_type: 'web' })
   assert.equal(missing.status, 404)
   assert.equal(missing.body, 'Project does not exist')
@@ -355,6 +366,7 @@ test('PUT /projects/:id - rejects invalid bodies', async () => {
   const response = await request(app)
     .put(`/projects/${projectId}`)
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
     .send({ name: '', project_type: 'web' })
 
   assert.equal(response.status, 400)
@@ -370,6 +382,7 @@ test('DELETE /projects/:id - deletes the project and cascades phases and members
   const response = await request(app)
     .delete(`/projects/${projectId}`)
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
 
   assert.equal(response.status, 200)
   assert.equal(response.body, 'successfully deleted')
@@ -397,12 +410,14 @@ test('DELETE /projects/:id - rejects non-owners and missing projects', async () 
   const memberResponse = await request(app)
     .delete(`/projects/${projectId}`)
     .set('Cookie', member.cookie)
+    .set('Origin', ORIGIN)
   assert.equal(memberResponse.status, 403)
   assert.equal(memberResponse.body, 'Only project owners are allowed')
 
   const missing = await request(app)
     .delete('/projects/2000000000')
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
   assert.equal(missing.status, 404)
   assert.equal(missing.body, 'Project does not exist')
 })
@@ -452,6 +467,7 @@ test('POST /projects/:id/members - adds a member as the owner', async () => {
   const response = await request(app)
     .post(`/projects/${projectId}/members`)
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
     .send({ userId: member.userId })
 
   assert.equal(response.status, 200)
@@ -472,6 +488,7 @@ test('POST /projects/:id/members - rejects unknown users, duplicate members, and
   const unknown = await request(app)
     .post(`/projects/${projectId}/members`)
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
     .send({ userId: 2000000000 })
   assert.equal(unknown.status, 404)
   assert.equal(unknown.body, 'User id does not exists')
@@ -479,6 +496,7 @@ test('POST /projects/:id/members - rejects unknown users, duplicate members, and
   const duplicate = await request(app)
     .post(`/projects/${projectId}/members`)
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
     .send({ userId: member.userId })
   assert.equal(duplicate.status, 409)
   assert.equal(duplicate.body, 'User is already a member')
@@ -486,6 +504,7 @@ test('POST /projects/:id/members - rejects unknown users, duplicate members, and
   const forbidden = await request(app)
     .post(`/projects/${projectId}/members`)
     .set('Cookie', member.cookie)
+    .set('Origin', ORIGIN)
     .send({ userId: 2000000000 })
   assert.equal(forbidden.status, 403)
   assert.equal(forbidden.body, 'Only project owners are allowed')
@@ -498,6 +517,7 @@ test('POST /projects/:id/members - validates the userId body', async () => {
     const response = await request(app)
       .post(`/projects/${projectId}/members`)
       .set('Cookie', cookie)
+      .set('Origin', ORIGIN)
       .send({ userId })
 
     assert.equal(response.status, 400)
@@ -546,6 +566,7 @@ test('DELETE /projects/:id/members/:userId - removes a member as the owner', asy
   const response = await request(app)
     .delete(`/projects/${projectId}/members/${member.userId}`)
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
 
   assert.equal(response.status, 200)
   assert.equal(response.body.msg, 'User is removed from the project')
@@ -565,18 +586,21 @@ test('DELETE /projects/:id/members/:userId - rejects self-removal, unknown membe
   const self = await request(app)
     .delete(`/projects/${projectId}/members/${owner.userId}`)
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
   assert.equal(self.status, 403)
   assert.equal(self.body, 'Project owner cannot remove themselves')
 
   const unknown = await request(app)
     .delete(`/projects/${projectId}/members/2000000000`)
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
   assert.equal(unknown.status, 404)
   assert.equal(unknown.body, 'User is not a member of this project')
 
   const forbidden = await request(app)
     .delete(`/projects/${projectId}/members/${owner.userId}`)
     .set('Cookie', member.cookie)
+    .set('Origin', ORIGIN)
   assert.equal(forbidden.status, 403)
   assert.equal(forbidden.body, 'Only project owners are allowed')
 })
@@ -587,12 +611,14 @@ test('DELETE /projects/:id/members/:userId - validates both ids', async () => {
   const invalidUser = await request(app)
     .delete(`/projects/${projectId}/members/abc`)
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
   assert.equal(invalidUser.status, 400)
   assert.equal(invalidUser.body, 'Invalid Id')
 
   const invalidProject = await request(app)
     .delete('/projects/abc/members/1')
     .set('Cookie', cookie)
+    .set('Origin', ORIGIN)
   assert.equal(invalidProject.status, 400)
   assert.equal(invalidProject.body, 'Invalid Id')
 })
