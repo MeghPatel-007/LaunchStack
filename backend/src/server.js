@@ -5,6 +5,6 @@ import { app } from './app.js'
 const port = validatePortNumber() // validates the port number
 await ensureLogsDir() // ensures logs dir exists or not
 
-app.listen(port, () => {
-  console.log(`Server is running in port number : http://localhost:${port}`)
+app.listen(port, '0.0.0.0', () => {
+  console.log(`LaunchStack API running on port ${port}`)
 })

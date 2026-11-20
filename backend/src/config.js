@@ -11,17 +11,13 @@ dotenv.config({
 })
 
 export function validatePortNumber() {
-  const port = process.env.PORT
-  if (typeof port !== 'string' || port.trim() === '') {
+  const port = process.env.PORT ?? '8000'
+
+  if (port.trim() === '') {
     throw new Error('PORT env var is missing or empty')
   }
   const validPort = Number(port)
-  if (
-    Number.isNaN(validPort) ||
-    !Number.isInteger(validPort) ||
-    1 > validPort ||
-    validPort > 65535
-  ) {
+  if (!Number.isInteger(validPort) || validPort < 1 || validPort > 65535) {
     throw new Error('PORT env var is invalid')
   }
   return validPort
