@@ -28,18 +28,30 @@ export function validatePortNumber() {
 }
 
 export function getDatabaseConfig() {
+  const databaseUrl = process.env.DATABASE_URL
+
+  if (typeof databaseUrl === 'string' && databaseUrl.trim() !== '') {
+    return {
+      connectionString: databaseUrl.trim(),
+    }
+  }
+
   const host = process.env.DB_HOST
   const port = process.env.DB_PORT
   const database = process.env.DB_NAME
   const user = process.env.DB_USER
   const password = process.env.DB_PASSWORD
+
   if (typeof host !== 'string' || host.trim() === '') {
     throw new Error('Database Host name is empty or missing')
   }
+
   if (typeof port !== 'string' || port.trim() === '') {
     throw new Error('Database port number is empty or missing')
   }
+
   const validPort = Number(port)
+
   if (
     Number.isNaN(validPort) ||
     !Number.isInteger(validPort) ||
@@ -48,12 +60,15 @@ export function getDatabaseConfig() {
   ) {
     throw new Error('Database port number is not valid')
   }
+
   if (typeof database !== 'string' || database.trim() === '') {
     throw new Error('Database name is empty or missing')
   }
+
   if (typeof user !== 'string' || user.trim() === '') {
     throw new Error('Database user name is empty or missing')
   }
+
   if (typeof password !== 'string' || password.trim() === '') {
     throw new Error('Database password is empty or missing')
   }
@@ -64,5 +79,10 @@ export function getDatabaseConfig() {
     database: database.trim(),
     user: user.trim(),
     password: password.trim(),
+    ...(process.env.NODE_ENV === 'production' && {
+      ssl: {
+        rejectUnauthorized: true,
+      },
+    }),
   }
 }
