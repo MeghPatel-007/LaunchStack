@@ -2,6 +2,7 @@ import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import pool from '../db/pool.js'
 import { cookieOptions } from '../config/cookie.js'
+import { allowedOrigins } from '../config/cors.js'
 
 export async function registration(req, res, next) {
   const { username, email, password } = req.body
@@ -98,8 +99,7 @@ export async function getCurrentUser(req, res, next) {
 export async function logout(req, res, next) {
   try {
     const origin = req.get('origin')
-    const allowedOrigin = process.env.ALLOWED_FRONTEND_ORIGINS
-    if (allowedOrigin && origin && origin !== allowedOrigin) {
+    if (!origin || !allowedOrigins.includes(origin)) {
       return res.status(403).json({ msg: 'Forbidden: Invalid origin' })
     }
     res.clearCookie('token', cookieOptions)

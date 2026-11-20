@@ -8,12 +8,22 @@ import projectPhaseRouter from './routes/projectPhaseRoutes.js'
 import authRouter from './routes/authRoutes.js'
 import { authenticate } from './middleware/authMiddleware.js'
 import { corsOptions } from './config/cors.js'
+import { validateOrigin } from './middleware/validateOrigin.js'
 export const app = express()
 
 // app.get('/', (req, res) => {
 //   res.send('hello world')
 // })
 app.use(helmet())
+
+// checking for server health
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    service: 'LaunchStack API',
+  })
+})
+
 app.use('/', async (req, res, next) => {
   try {
     const logs = req.method + req.path + '\n'
@@ -26,6 +36,7 @@ app.use('/', async (req, res, next) => {
 
 // cors origins means to allow other origins to communicate with this origins api req and responses
 app.use(cors(corsOptions))
+app.use(validateOrigin)
 
 app.use(express.json())
 app.use(cookieParser())

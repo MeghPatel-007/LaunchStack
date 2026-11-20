@@ -1,4 +1,4 @@
-const allowedOrigins = process.env.ALLOWED_FRONTEND_ORIGINS?.split(',')
+export const allowedOrigins = process.env.ALLOWED_FRONTEND_ORIGINS?.split(',')
   .map((url) => url.trim())
   .filter(Boolean)
 
