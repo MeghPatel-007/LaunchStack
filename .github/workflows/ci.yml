@@ -52,22 +52,17 @@ jobs:
             -v ON_ERROR_STOP=1 \
             -f database/launchstack_test.sql
 
-      - name: Create test environment
-        working-directory: backend
-        run: |
-          cat > ../.env.test <<'EOF'
-          NODE_ENV=test
-          DB_HOST=localhost
-          DB_PORT=5432
-          DB_NAME=launchstack_test
-          DB_USER=postgres
-          DB_PASSWORD=postgres
-          JWT_SECRET=ci-only-test-secret-not-for-production
-          ALLOWED_FRONTEND_ORIGINS=http://localhost:3000
-          EOF
-
       - name: Run backend tests
         working-directory: backend
+        env:
+          NODE_ENV: test
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: launchstack_test
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          JWT_SECRET: ci-only-test-secret-not-for-production
+          ALLOWED_FRONTEND_ORIGINS: http://localhost:3000
         run: bun test
 
   frontend:
