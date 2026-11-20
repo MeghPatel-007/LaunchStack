@@ -4,6 +4,7 @@ import { validatePortNumber, getDatabaseConfig } from '../src/config.js'
 
 const envKeys = [
   'PORT',
+  'DATABASE_URL',
   'DB_HOST',
   'DB_PORT',
   'DB_NAME',
@@ -78,16 +79,16 @@ test('validatePortNumber - accepts ports inside the valid range', () => {
 
 test('getDatabaseConfig - rejects missing or empty database settings', () => {
   const invalid = [
-    [{ DB_HOST: undefined }, 'Database Host name is empty or missing'],
-    [{ DB_HOST: '  ' }, 'Database Host name is empty or missing'],
-    [{ DB_PORT: undefined }, 'Database port number is empty or missing'],
-    [{ DB_PORT: 'abc' }, 'Database port number is not valid'],
-    [{ DB_PORT: '0' }, 'Database port number is not valid'],
-    [{ DB_PORT: '70000' }, 'Database port number is not valid'],
-    [{ DB_PORT: '5.5' }, 'Database port number is not valid'],
-    [{ DB_NAME: undefined }, 'Database name is empty or missing'],
-    [{ DB_USER: '' }, 'Database user name is empty or missing'],
-    [{ DB_PASSWORD: '   ' }, 'Database password is empty or missing'],
+    [{ DATABASE_URL: undefined, DB_HOST: undefined }, 'Database Host name is empty or missing'],
+    [{ DATABASE_URL: undefined, DB_HOST: '  ' }, 'Database Host name is empty or missing'],
+    [{ DATABASE_URL: undefined, DB_PORT: undefined }, 'Database port number is empty or missing'],
+    [{ DATABASE_URL: undefined, DB_PORT: 'abc' }, 'Database port number is not valid'],
+    [{ DATABASE_URL: undefined, DB_PORT: '0' }, 'Database port number is not valid'],
+    [{ DATABASE_URL: undefined, DB_PORT: '70000' }, 'Database port number is not valid'],
+    [{ DATABASE_URL: undefined, DB_PORT: '5.5' }, 'Database port number is not valid'],
+    [{ DATABASE_URL: undefined, DB_NAME: undefined }, 'Database name is empty or missing'],
+    [{ DATABASE_URL: undefined, DB_USER: '' }, 'Database user name is empty or missing'],
+    [{ DATABASE_URL: undefined, DB_PASSWORD: '   ' }, 'Database password is empty or missing'],
   ]
 
   for (const [overrides, message] of invalid) {
@@ -113,6 +114,64 @@ test('getDatabaseConfig - returns trimmed values and a numeric port', () => {
         database: 'launchstack_test',
         user: 'postgres',
         password: 'secret',
+      })
+    },
+  )
+})
+
+test('getDatabaseConfig - accepts DATABASE_URL', () => {
+  const connectionString =
+    'postgresql://user:password@host.neon.tech/launchstack?sslmode=require'
+
+  withEnv(
+    {
+      DATABASE_URL: connectionString,
+      DB_HOST: undefined,
+      DB_PORT: undefined,
+      DB_NAME: undefined,
+      DB_USER: undefined,
+      DB_PASSWORD: undefined,
+    },
+    () => {
+      assert.deepEqual(getDatabaseConfig(), {
+        connectionString,
+      })
+    },
+  )
+})
+
+test('getDatabaseConfig - trims DATABASE_URL', () => {
+  const connectionString =
+    'postgresql://user:password@host.neon.tech/launchstack?sslmode=require'
+
+  withEnv(
+    {
+      DATABASE_URL: ` ${connectionString} `,
+    },
+    () => {
+      assert.deepEqual(getDatabaseConfig(), {
+        connectionString,
+      })
+    },
+  )
+})
+
+test('getDatabaseConfig - prioritizes DATABASE_URL over individual settings', () => {
+  const connectionString =
+    'postgresql://user:password@host.neon.tech/launchstack?sslmode=require'
+
+  withEnv(
+    {
+      DATABASE_URL: connectionString,
+      DB_HOST: 'localhost',
+      DB_PORT: '5432',
+      DB_NAME: 'local_db',
+      DB_USER: 'postgres',
+      DB_PASSWORD: 'local_password',
+    },
+    () => {
+      assert.deepEqual(getDatabaseConfig(), {
+        connectionString,
       })
     },
   )
