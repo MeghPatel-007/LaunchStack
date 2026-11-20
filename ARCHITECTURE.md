@@ -17,9 +17,19 @@ The migration is **deferred, not cancelled**. This record sets direction; it doe
 - EW01–EW04 are complete.
 - The backend MVP uses Node.js, Express, and PostgreSQL.
 - It includes authentication and authorization, project APIs, project phases, validation, and error handling.
-- EW05 onward resumes with the Next.js frontend, followed by integration with the existing API.
+- EW05 built the Next.js App Router frontend, reusable UI components, CI, and a deployed skeleton.
+- EW06 built the login, registration, logout, and dashboard flows against the existing Express API, with backend CORS, Helmet, and auth-route rate limiting.
+- The frontend calls the existing Express API. Express remains responsible for business logic, authentication validation, and database operations.
+- The current deployment runs the frontend on Vercel, the Express API on Render, and PostgreSQL on Neon.
+- Authenticated dashboard access in production is blocked by a cross-domain cookie issue. The proposed same-origin Backend-for-Frontend (BFF) layer in Next.js has **not** been implemented.
 
 This is the agreed high-level state. Confirm details such as the repository structure, database schema, and exact auth implementation from the repository before changing them.
+
+## Production authentication issue
+
+The Express API sets the authentication cookie on the Render API domain. The Next.js proxy executes on the Vercel frontend domain. The browser does not send the Render-domain cookie to Vercel, so the proxy cannot read the authentication cookie and redirects authenticated users to the sign-in page.
+
+The proposed solution is a same-origin BFF in Next.js that owns the browser-facing session cookie and forwards requests to the Express API. This is pending work. It is not part of the current implementation, and this record should not be read as claiming that authentication is production-ready.
 
 ## Staged transition
 
@@ -30,6 +40,7 @@ This is the agreed high-level state. Confirm details such as the repository stru
 - Match the backend's current authentication and authorization behavior; handle tokens or sessions safely.
 - Keep the Express API and PostgreSQL as the system of record for backend operations and data.
 - Document local configuration and how to run the integrated frontend and backend.
+- Resolve cross-domain session delivery before claiming authenticated production access; the pending same-origin BFF is the proposed approach.
 
 **Exit condition:** The frontend is complete for the intended MVP scope and its primary user journeys work end to end through Express and PostgreSQL, with expected access control and failure behavior.
 

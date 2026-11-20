@@ -4,7 +4,9 @@
 
 `LEARN.md` is the concise personal record. This file is the deep reference: use it when a concept has faded and the system needs to be reconstructed from first principles and actual LaunchStack code.
 
-The current implementation is the authority for current behavior. Historical sections identify older implementations as historical rather than presenting them as current. The history used here runs from the initial project through the EW01, EW02, PostgreSQL, phase, membership, authorization-refactor, and cleanup commits.
+The current implementation is the authority for current behavior. Historical sections identify older implementations as historical rather than presenting them as current. The backend is the implemented Express API. The Next.js App Router frontend is also implemented and calls that API.
+
+This reference covers the backend in depth. See [README.md](README.md) and [frontend/README.md](frontend/README.md) for frontend setup, routes, and the pending BFF.
 
 ## 2. LaunchStack Architecture
 
@@ -12,7 +14,7 @@ The backend uses:
 
 `Routes -> Middleware -> Controllers -> PostgreSQL`
 
-`app.js` creates the Express app, installs request logging and JSON parsing, mounts public auth routes, mounts authenticated project routes, mounts authenticated phase routes, and installs error middleware. `server.js` validates startup configuration, ensures the logs directory exists, and starts listening.
+`app.js` creates the Express app, installs request logging, CORS, Origin validation, JSON parsing, mounts public auth routes, mounts authenticated project routes, mounts authenticated phase routes, and installs error middleware. `server.js` validates startup configuration, ensures the logs directory exists, and starts listening. The Next.js frontend is a separate application that calls this API over HTTP.
 
 Routes describe the public HTTP surface. Middleware handles concerns shared by many routes: IDs, body fields, email format, authentication, and membership/role authorization. Controllers receive the request after those gates and coordinate SQL plus HTTP responses. `db/projectMembership.js` contains small shared membership lookups, not a service/repository architecture.
 
@@ -44,6 +46,8 @@ Node runs the backend JavaScript process. In ESM mode, imports load modules and 
 Startup is intentionally sequential:
 
 `validatePortNumber() -> await ensureLogsDir() -> app.listen()`
+
+`validatePortNumber()` defaults to `8000` when `PORT` is absent and rejects empty or out-of-range values.
 
 The filesystem utility uses promise APIs. It handles `ENOENT` by creating the logs directory and rethrows unexpected errors. The reason for awaiting it is operational: a required startup dependency must succeed before the server reports readiness.
 
@@ -94,6 +98,8 @@ Validation middleware is factory-style because each route can specify the field 
 
 `helmet()` sets security headers on every response. `cors(corsOptions)` compares the request origin to `ALLOWED_FRONTEND_ORIGINS`. A missing origin or a listed origin continues normally; any other origin gets no CORS headers because the origin callback returns `callback(null, false)`. This is a deliberate change from `callback(new Error(...))`, which would surface as a `500` instead of a plain origin rejection.
 
+`validateOrigin` runs after CORS and before JSON parsing. It is a separate server-side check rather than a CORS setting. `GET`, `HEAD`, and `OPTIONS` pass. `POST`, `PUT`, `PATCH`, and `DELETE` must carry an Origin in `ALLOWED_FRONTEND_ORIGINS`, otherwise the response is `403 { error: 'Forbidden: Invalid origin' }`. This protects state-changing endpoints from requests that never pass through a browser's CORS preflight.
+
 `loginRateLimiter` and `registerRateLimiter` come from `express-rate-limit` and are mounted before validation on `POST /auth/login` and `POST /auth/register`. They allow 10 requests per IP per 15 minutes and 5 per IP per hour, return `429` with a fixed message, and send draft-8 `RateLimit` headers.
 
 Project authorization distinguishes project existence, membership, and ownership. Phase authorization has two paths: resolve a phase to its project for phase routes, or validate the project directly for project-phase collection routes.
@@ -125,7 +131,7 @@ One historical cleanup issue was controllers calling `next(e)` without accepting
 
 ## 10. PostgreSQL Integration
 
-`db/pool.js` creates a `pg.Pool` from `getDatabaseConfig()`. A pool avoids opening a new database connection for every ordinary query. Controllers use `pool.query()` for independent operations and `pool.connect()` for the project-creation transaction.
+`db/pool.js` creates a `pg.Pool` from `getDatabaseConfig()`. `getDatabaseConfig()` accepts either a `DATABASE_URL` connection string or individual `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASSWORD` values; `DATABASE_URL` wins when both are present. A pool avoids opening a new database connection for every ordinary query. Controllers use `pool.query()` for independent operations and `pool.connect()` for the project-creation transaction.
 
 Parameterized queries use placeholders such as `$1`, `$2` and pass values as a separate array. Results expose `rows` and `rowCount`; controllers use those to distinguish an existing resource, an empty result, and a successful insert/update/delete.
 
@@ -261,7 +267,7 @@ Registration validates fields, normalizes the email for lookup/storage, hashes t
 
 On a protected request, authentication reads the `token` cookie, verifies the token with `JWT_SECRET`, validates the payload ID, checks the user row, and sets `req.user`. Controllers use that identity rather than accepting a client-provided owner identity.
 
-The mechanism present is JWT bearer authentication. Login and registration are rate limited per IP. Token revocation, refresh tokens, and other mechanisms are not current features and are not described as implemented.
+The mechanism present is JWT authentication delivered through an HTTP-only cookie. The cookie is `SameSite=Lax` locally and `SameSite=None; Secure` in production, with a 24-hour `Max-Age`. It is not bearer authentication through the `Authorization` header; the cookie is the only accepted source. Login and registration are rate limited per IP. Token revocation, refresh tokens, and other mechanisms are not current features and are not described as implemented.
 
 ## 20. Authorization
 
@@ -286,7 +292,7 @@ Current semantics are:
 
 - `400` for malformed JSON and invalid input.
 - `401` for absent/invalid bearer authentication or invalid JWT identity.
-- `403` for authenticated users without the required project role.
+- `403` for authenticated users without the required project role, or state-changing requests without an allowed Origin.
 - `404` for missing projects, phases, users, or memberships.
 - `409` for duplicate email, membership, or phase-position conflicts.
 - `500` for unexpected failures.
@@ -434,7 +440,7 @@ The repository/history supports these mistakes or corrected paths:
 - **Node:** runtime process loads ESM modules and sequences async startup.
 - **Express:** request moves through ordered middleware and route matching.
 - **Middleware:** validates, authenticates, authorizes, or forwards errors.
-- **Authentication:** bcrypt verifies credentials and JWT carries identity.
+- **Authentication:** bcrypt verifies credentials and a JWT in an HTTP-only cookie carries identity.
 - **Authorization:** membership and role decide project/phase access.
 - **PostgreSQL:** relational tables and constraints persist/protect state.
 - **SQL:** placeholders keep values separate from query structure.

@@ -38,6 +38,15 @@
 - http status code and msg
 - error status code
 - forbidden/permission
+- origin validation before unsafe methods
+- CORS controls response access; origin validation rejects the request
+
+## Frontend and deployment
+
+- Next.js App Router and API client
+- dashboard proxy reads the cookie on the frontend domain
+- Vercel frontend, Render API, Neon PostgreSQL
+- different domains mean different cookie scopes
 
 ## Project phases
 

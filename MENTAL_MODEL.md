@@ -10,7 +10,7 @@ The startup chain is:
 
 `process -> ESM modules -> configuration -> filesystem initialization -> Express app -> listen`
 
-`config.js` loads `.env` relative to the module location. `server.js` validates the port, awaits `ensureLogsDir()`, and only then calls `app.listen()`. The reason for awaiting setup is causal: if required initialization fails, the server should not announce itself as ready.
+`config.js` loads `.env` relative to the module location. `server.js` validates the port (default `8000`), awaits `ensureLogsDir()`, and only then calls `app.listen()`. The reason for awaiting setup is causal: if required initialization fails, the server should not announce itself as ready.
 
 Modules divide responsibilities. `app.js` builds the application and registers middleware/routes. `server.js` owns startup. Controllers own request/database coordination. Utilities isolate reusable filesystem and phase-validation behavior. `pg.Pool` owns PostgreSQL connections.
 
@@ -22,7 +22,7 @@ The current mental model is:
 
 `Request -> middleware -> router -> controller -> database -> response`
 
-The application first writes a request log and parses JSON. `/auth` routes are public. `/projects` and phase routes pass through authentication. Route-specific middleware then validates IDs/body fields and checks project membership or ownership. The controller performs the domain operation and PostgreSQL query. The controller sends the response or forwards an unexpected error with `next(e)`.
+The application first writes a request log, applies CORS, and validates the Origin on state-changing requests. It then parses JSON. `/auth` routes are public. `/projects` and phase routes pass through authentication. Route-specific middleware then validates IDs/body fields and checks project membership or ownership. The controller performs the domain operation and PostgreSQL query. The controller sends the response or forwards an unexpected error with `next(e)`.
 
 `next()` means the current middleware is done and the next function may run. `next(e)` means normal processing stops and Express should use error middleware. The final error middleware translates malformed JSON and selected PostgreSQL constraint errors, then returns a generic `500` for unexpected failures.
 
@@ -38,11 +38,13 @@ Registration follows:
 
 Login follows:
 
-`email/password -> users query -> bcrypt.compare -> JWT -> token response`
+`email/password -> users query -> bcrypt.compare -> JWT -> HTTP-only token cookie`
 
-Authentication answers: **Who are you?** The JWT carries `user_id`; `authenticate` verifies the token, validates the claim, checks that the user exists, and attaches `req.user`.
+Authentication answers: **Who are you?** The JWT carries `user_id`; `authenticate` verifies the token, validates the claim, checks that the user exists, and attaches `req.user`. The browser does not expose the JWT to application JavaScript because the cookie is HTTP-only.
 
 Rate limiting answers: **How often may you try?** It is a separate control that runs before validation on the credential routes. Login allows 10 attempts per IP per 15 minutes; registration allows 5 per IP per hour. Exceeding a limit returns `429`, so brute-force attempts cost time even when the password is correct.
+
+Origin validation answers: **Did this state-changing request come from an allowed frontend?** CORS controls which browser origins may read responses. `validateOrigin` is a second, server-side check: `POST`, `PUT`, `PATCH`, and `DELETE` must carry an allowed `Origin`, otherwise the API returns `403` before the request reaches a controller. `GET`, `HEAD`, and `OPTIONS` bypass it.
 
 Authorization answers: **What are you allowed to do?** Project authorization queries membership and reads the role. `OWNER` can change/delete the project and manage members/phases. `MEMBER` can read member-level project/phase resources.
 
@@ -87,7 +89,7 @@ The project uses these meanings:
 
 - `400`: malformed JSON or invalid request fields/IDs.
 - `401`: missing or invalid authentication.
-- `403`: authenticated but not permitted by membership/role.
+- `403`: authenticated but not permitted by membership/role, or a state-changing request without an allowed Origin.
 - `404`: requested project, phase, user, or membership does not exist.
 - `409`: duplicate email, membership, or phase position conflicts with existing state.
 - `500`: unexpected server/database failure.
@@ -118,13 +120,22 @@ Git records the sequence:
 
 Commit history shows the concepts arriving in context: Node foundation, Express routes/middleware, controller extraction, PostgreSQL schema/CRUD, statistics, phases, membership authorization, and authorization-query refactoring.
 
+## Frontend Boundary
+
+The browser loads the Next.js app from the frontend origin. The app calls the Express API from a different origin, so the API answer depends on two boundaries:
+
+`browser -> Next.js UI -> fetch with credentials -> Express API -> PostgreSQL`
+
+The Next.js proxy also calls Express `/auth/me`, but it runs on the frontend origin and can only read cookies for that origin. In production, the API sets `token` on the API domain, so the proxy cannot see it. That mismatch is why the proposed same-origin BFF exists.
+
 ## Quick Revision
 
 - **Node:** a process loads modules, configuration, async operations, and finally a listening server.
 - **Express:** middleware moves a request through routing, authorization, controller, and response.
 - **Middleware:** cross-cutting request decisions happen before the controller.
-- **Authentication:** JWT establishes the user identity.
+- **Authentication:** JWT in an HTTP-only cookie establishes the user identity.
 - **Rate limiting:** per-IP attempt budgets slow brute-force traffic on the credential routes.
+- **Origin validation:** unsafe methods require an allowed Origin before the controller runs.
 - **Authorization:** membership and role decide the allowed action.
 - **PostgreSQL:** SQL persists the model and constraints protect its integrity.
 - **SQL:** parameters carry values separately from query structure.
